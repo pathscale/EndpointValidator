@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     process_error_codes(&config.error_codes_path).await?;
 
     // Uncomment if you want to connect and process via WebSocket
-    // connect_and_process(&config).await?;
+    connect_and_process(&config).await?;
 
     Ok(())
 }

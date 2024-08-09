@@ -52,11 +52,11 @@ pub async fn process_error_codes(path: &str) -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
-// async fn connect_and_process(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
-    // // Connect the WebSocket server
-    // println!("Connecting to server at {}", config.server_url);
-    // let mut client = WsClient::new(&config.server_url, &config.credentials).await?;
-    // println!("Connected");
+pub async fn connect_and_process(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    // Connect the WebSocket server
+    println!("Connecting to server at {}", config.server_url);
+    let mut client = WsClient::new(&config.server_url, &config.credentials).await?;
+    println!("Connected");
 
     // // Example usage of WebSocket client
     // let params: Value = serde_json::from_str(&config.params)?;
@@ -66,4 +66,5 @@ pub async fn process_error_codes(path: &str) -> Result<(), Box<dyn std::error::E
     //     println!("Response: {:?}", resp);
     //     sleep(Duration::from_secs(1)).await;
     // }
-// }
+    Ok(())
+}
