@@ -1,38 +1,21 @@
-use tokio;
-use serde_json::Value;
 use std::path::PathBuf;
-use tokio::time::{sleep, Duration};
-use websocket_client::ws::WsClient;
-use websocket_client::config::Config;
+use websocket_client::helper::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = PathBuf::from("config.toml");
 
     // Load the configuration
-    let config = Config::try_from(config_path)?;
-
-    // Print loaded configuration
+    let config = load_config(config_path).await?;
     println!("Loaded config: {:?}", config);
 
-    // Convert the params JSON string to serde_json::Value
-    let params: Value = serde_json::from_str(&config.params)?;
+    // Process JSON files
+    process_endpoints(&config.endpoints_path).await?;
+    process_services(&config.services_path).await?;
+    process_error_codes(&config.error_codes_path).await?;
 
-    println!("Connecting to server at {}", config.server_url);
-    let mut client = WsClient::new(&config.server_url, &config.credentials).await?;
-    println!("Connected");
-
-    loop {
-        // Receive raw data from the client
-        client.send_req(config.method_id, params.clone()).await?;
-        let resp = client.recv_raw().await?;
-        println!("Response: {:?}", resp);
-        // Sleep for 1 second before the next iteration
-        sleep(Duration::from_secs(1)).await;
-    }
-
-    client.close().await?;
-    println!("Connection closed successfully");
+    // Uncomment if you want to connect and process via WebSocket
+    // connect_and_process(&config).await?;
 
     Ok(())
 }

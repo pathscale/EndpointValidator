@@ -8,8 +8,11 @@ use eyre::Result;
 pub struct Config {
     pub server_url: String,
     pub credentials: String,
-    pub method_id: u32,
-    pub params: String, 
+    pub services_path: String,
+    pub error_codes_path: String,
+    pub endpoints_path: String,
+    // pub method_id: u32,
+    // pub params: String, 
 }
 
 impl FromStr for Config {
