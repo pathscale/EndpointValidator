@@ -1,5 +1,5 @@
 [package]
-name = "websocket_client"
+name = "endpoint_validator"
 version = "0.1.0"
 edition = "2021"
 
@@ -19,3 +19,6 @@ tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 toml = "*"
 uuid = { version = "1.3.3", features = ["v4", "fast-rng", "macro-diagnostics", "serde"] }
+read_input = "0.8.6"
+ratatui = "0.28.0"
+crossterm = "0.28.1"
