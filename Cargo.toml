@@ -24,3 +24,4 @@ ratatui = "0.20.0"
 crossterm = "0.28.1"
 clap = { version = "4.0", features = ["derive"] }
 async-trait = "0.1.50"
+anyhow = "1.0"

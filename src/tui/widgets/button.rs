@@ -7,12 +7,12 @@ use ratatui::{
 pub fn create_button<'a>(label: &'a str, is_active: bool, is_focused: bool) -> Paragraph<'a> {
     let style = if is_active {
         Style::default()
-            .fg(Color::White)
+            .fg(Color::Gray)
             .bg(Color::Green)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default()
-            .fg(Color::White)
+            .fg(Color::Gray)
             .bg(Color::DarkGray)
     };
 
@@ -21,7 +21,7 @@ pub fn create_button<'a>(label: &'a str, is_active: bool, is_focused: bool) -> P
         .border_style(Style::default().fg(if is_focused {
             Color::Yellow
         } else {
-            Color::White
+            Color::Gray
         }));
 
     Paragraph::new(Span::styled(label, style))

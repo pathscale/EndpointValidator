@@ -12,9 +12,11 @@ pub fn create_tabs<'a>(titles: &[&'a str], selected: &AppScreen) -> Tabs<'a> {
         .block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Gray))
                 .title(" Menu ")
-                .title_style(Style::default().fg(Color::White))
+                .title_style(Style::default().fg(Color::Gray))
         )
+        .style(Style::default().fg(Color::Gray))
         .select(match selected {
             AppScreen::Settings => 0,
             AppScreen::Endpoints => 1,

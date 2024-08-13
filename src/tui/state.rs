@@ -1,3 +1,5 @@
+use crate::ws::WsClient;
+use anyhow::{Result, Context};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
@@ -30,6 +32,8 @@ pub enum JsonViewMode {
 }
 
 pub struct AppState {
+    pub client: Option<WsClient>,
+    pub server_raw_response: Option<String>,
     pub current_screen: AppScreen,
     pub focused_settings_field: Option<SettingsField>,
     pub focused_endpoint_field: Option<EndpointField>,
@@ -55,6 +59,8 @@ impl AppState {
         endpoint_data.insert("Endpoint 2".to_string(), ("Method2".to_string(), "Seq2".to_string(), vec!["Param2-1".to_string(), "Param2-2".to_string(), "Param2-3".to_string()]));
 
         Self {
+            client: None,
+            server_raw_response: None,
             current_screen: AppScreen::Settings,
             focused_settings_field: Some(SettingsField::Url),
             focused_endpoint_field: None,
@@ -180,11 +186,19 @@ impl AppState {
         }
     }
 
-    pub fn handle_enter(&mut self) {
+    pub async fn handle_enter(&mut self) {
         if self.current_screen == AppScreen::Settings {
             match self.focused_settings_field {
-                Some(SettingsField::ConnectButton) => self.connected = true,
-                Some(SettingsField::DisconnectButton) => self.connected = false,
+                Some(SettingsField::ConnectButton) => {
+                    if let Err(err) = self.handle_connect().await {
+                        self.connected = false;
+                    } 
+                },
+                Some(SettingsField::DisconnectButton) => {
+                    if let Err(err) = self.handle_disconnect().await {
+                        self.connected = true;
+                    } 
+                },
                 _ => {}
             }
         } else if self.current_screen == AppScreen::Endpoints {
@@ -197,16 +211,43 @@ impl AppState {
         }
     }
 
+    pub async fn handle_disconnect(&mut self) -> Result<()> {
+        if let Some(mut client) = self.client.take() {
+            client.close().await?;
+        }
+        self.connected = false;
+        self.server_raw_response = format!("Disconnected from {}", self.url).into();
+        Ok(())
+    }
+
+    pub async fn handle_connect(&mut self) -> Result<()> {
+        let headers = format!(
+            "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
+            self.username, self.password
+        );
+        let mut client = WsClient::new(&self.url, &headers)
+            .await
+            .context("Failed to connect to WebSocket")?;
+        self.client = Some(client);
+        if let Some(client) = &mut self.client {
+            let response = client.recv_raw().await?;
+            self.server_raw_response = format!(
+                "Connected to {}\n{}",
+                self.url,
+                serde_json::to_string_pretty(&response)?
+            ).into();
+        }
+        self.connected = true;
+        Ok(())
+    }
+
     pub fn switch_screen(&mut self) {
         self.current_screen = match self.current_screen {
             AppScreen::Settings => {
-                self.focused_settings_field = None;
                 self.update_selected_endpoint_data();
                 AppScreen::Endpoints
             }
             AppScreen::Endpoints => {
-                self.focused_endpoint_field = None;
-                self.focused_settings_field = Some(SettingsField::Url);
                 AppScreen::Settings
             }
         };

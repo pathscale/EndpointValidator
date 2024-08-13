@@ -1,5 +1,7 @@
 mod cli;
 mod tui;
+mod ws;
+mod log;    
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {    
