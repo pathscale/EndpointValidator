@@ -2,6 +2,7 @@ mod cli;
 mod tui;
 mod ws;
 mod log;    
+mod parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {    
@@ -9,15 +10,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = cli::parse_args();
 
     // If paths are provided via command-line, use them; otherwise, fallback to interactive input
-    let (services_path, error_codes_path) = match (cli.services_path, cli.error_codes_path) {
-        (Some(services), Some(errors)) => (services, errors),
+    let services_path = match cli.services_path {
+        Some(services) => services,
         _ => {
             println!("Missing command-line arguments. Switching to interactive mode...");
             cli::collect_paths_interactively()
         }
     };
 
+    let services = parser::load_services(&services_path)?;
+    let (endpoint_names, endpoint_data) = services.extract_endpoints();
+
     // TUI implementation
-    tui::run().await?;
+    tui::run(endpoint_names, endpoint_data).await?;
     Ok(())
 }

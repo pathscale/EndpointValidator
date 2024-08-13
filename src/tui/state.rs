@@ -1,5 +1,5 @@
 use crate::ws::WsClient;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
@@ -24,6 +24,7 @@ pub enum AppBlock {
     Settings,
     EndpointList,
     EndpointsReq,
+    EndpointsRes,
 }
 
 #[derive(PartialEq)]
@@ -38,42 +39,63 @@ pub struct AppState {
     pub focused_settings_field: Option<SettingsField>,
     pub focused_endpoint_field: Option<EndpointField>,
     pub connected: bool,
+    pub endpoint_connected: bool,
     pub url: String,
     pub username: String,
     pub password: String,
-    pub method_id: String,
-    pub seq: String,
+    pub method_id: Option<u32>,
+    pub service_name: Option<String>,
     pub params: Vec<String>,
     pub json_view_mode: JsonViewMode,
     pub json_data: Option<String>,
     pub endpoints: Vec<String>,
     pub selected_endpoint: usize,
-    pub endpoint_data: HashMap<String, (String, String, Vec<String>)>,
+    pub endpoint_data: HashMap<String, (String, u32, Vec<String>)>,
+    pub response_scroll: (u16, u16),
 }
 
 impl AppState {
-    pub fn new() -> Self {
-        let mut endpoint_data = HashMap::new();
-        endpoint_data.insert("Endpoint 1".to_string(), ("Method1".to_string(), "Seq1".to_string(), vec!["Param1-1".to_string(), "Param1-2".to_string()]));
-        endpoint_data.insert("Endpoint 2".to_string(), ("Method2".to_string(), "Seq2".to_string(), vec!["Param2-1".to_string(), "Param2-2".to_string(), "Param2-3".to_string()]));
-
+    pub fn new(endpoint_names: Vec<String>, endpoint_data: HashMap<String, (String, u32, Vec<String>)>) -> Self {
         Self {
             client: None,
             current_block: AppBlock::Settings,
             focused_settings_field: Some(SettingsField::Url),
             focused_endpoint_field: Some(EndpointField::Param(0)),
             connected: false,
+            endpoint_connected: false,
             url: String::new(),
             username: String::new(),
             password: String::new(),
-            method_id: String::new(),
-            seq: String::new(),
+            method_id: None,
+            service_name: None,
             params: Vec::new(),
             json_view_mode: JsonViewMode::Pretty,
             json_data: None,
-            endpoints: vec!["Endpoint 1".to_string(), "Endpoint 2".to_string()],
+            endpoints: endpoint_names,
             selected_endpoint: 0,
-            endpoint_data,
+            endpoint_data: endpoint_data,
+            response_scroll: (0, 0),
+        }
+    }
+
+    // Scroll logic for the response section
+    pub fn scroll_response_down(&mut self) {
+        self.response_scroll.0 += 1;
+    }
+
+    pub fn scroll_response_up(&mut self) {
+        if self.response_scroll.0 > 0 {
+            self.response_scroll.0 -= 1;
+        }
+    }
+
+    pub fn scroll_response_right(&mut self) {
+        self.response_scroll.1 += 1;
+    }
+
+    pub fn scroll_response_left(&mut self) {
+        if self.response_scroll.1 > 0 {
+            self.response_scroll.1 -= 1;
         }
     }
 
@@ -134,6 +156,7 @@ impl AppState {
             AppBlock::Settings => self.focused_settings_field = self.next_settings_field(),
             AppBlock::EndpointList => self.select_next_endpoint(),
             AppBlock::EndpointsReq => self.focused_endpoint_field = self.next_endpoint_field(),
+            AppBlock::EndpointsRes => self.scroll_response_down(),
         }
     }
 
@@ -142,6 +165,7 @@ impl AppState {
             AppBlock::Settings => self.focused_settings_field = self.previous_settings_field(),
             AppBlock::EndpointList => self.select_previous_endpoint(),
             AppBlock::EndpointsReq => self.focused_endpoint_field = self.previous_endpoint_field(),
+            AppBlock::EndpointsRes => self.scroll_response_up(),
         }
     }
 
@@ -204,7 +228,8 @@ impl AppState {
                 self.update_selected_endpoint_data();
                 AppBlock::EndpointsReq
             }
-            AppBlock::EndpointsReq => AppBlock::Settings,
+            AppBlock::EndpointsReq => AppBlock::EndpointsRes,
+            AppBlock::EndpointsRes => AppBlock::Settings,
         };
     }
 
@@ -225,22 +250,35 @@ impl AppState {
 
     fn update_selected_endpoint_data(&mut self) {
         if let Some(endpoint) = self.endpoints.get(self.selected_endpoint) {
-            if let Some((method_id, seq, params)) = self.endpoint_data.get(endpoint) {
-                self.method_id = method_id.clone();
-                self.seq = seq.clone();
+            if let Some((service_name, method_id, params)) = self.endpoint_data.get(endpoint) {
+                self.method_id = Some(*method_id);
+                self.service_name = Some(service_name.clone());
                 self.params = params.clone();
             }
         }
     }
 
-    // JSON view toggle
     pub fn toggle_json_view_mode(&mut self) {
-        self.json_view_mode = match self.json_view_mode {
-            JsonViewMode::Pretty => JsonViewMode::Raw,
-            JsonViewMode::Raw => JsonViewMode::Pretty,
-        };
+        if let Some(raw_json) = self.json_data.as_ref() {
+            self.json_view_mode = match self.json_view_mode {
+                JsonViewMode::Pretty => {
+                    let raw_json = serde_json::to_string(
+                        &serde_json::from_str::<serde_json::Value>(raw_json).unwrap_or_default()
+                    ).unwrap_or_else(|_| raw_json.clone());
+                    self.json_data = Some(raw_json);
+                    JsonViewMode::Raw
+                },
+                JsonViewMode::Raw => {
+                    let pretty_json = serde_json::to_string_pretty(
+                        &serde_json::from_str::<serde_json::Value>(raw_json).unwrap_or_default()
+                    ).unwrap_or_else(|_| raw_json.clone());
+                    self.json_data = Some(pretty_json);
+                    JsonViewMode::Pretty
+                },
+            };
+        }
     }
-
+    
     // Handle connection and disconnection
     pub async fn handle_enter(&mut self) -> Result<()> {
         if self.current_block == AppBlock::Settings {
@@ -284,7 +322,21 @@ impl AppState {
             .await
             .context("Failed to connect to WebSocket")?;
         self.client = Some(client);
+        
+        let client = self.client.as_mut().context("WebSocket client is not connected")?;
+        let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
+        let formatted_response = match self.json_view_mode {
+            JsonViewMode::Pretty => {
+                serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
+            }
+            JsonViewMode::Raw => {
+                serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
+            }
+        };
+        let resp = format!("Connected to {}\n{}", self.url, formatted_response);        
+        self.json_data = Some(resp);
         self.connected = true;
+
         Ok(())
     }
 
@@ -292,22 +344,32 @@ impl AppState {
         if let Some(mut client) = self.client.take() {
             client.close().await?;
         }
+        let resp = format!("Disconnected from to {}", self.url);
+        self.json_data = Some(resp);
         self.connected = false;
         Ok(())
     }
 
-    pub async fn handle_endpoint_connect(&mut self) -> Result<()> {
-        // if let Some(client) = self.client.as_mut() {
-        //     let response = client
-        //         .send_req(self.method_id.clone(), &self.params)
-        //         .await
-        //         .context("Failed to send request to endpoint")?;
-        //     self.json_data = Some(serde_json::to_string_pretty(&response)?);
-        // }
+    pub async fn handle_endpoint_connect(&mut self) -> Result<()> { 
+        let client = self.client.as_mut().context("WebSocket client is not connected")?;
+        client.send_req(self.method_id.unwrap(), &self.params).await.context("Failed to send request to WebSocket")?;
+        let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
+
+        let resp = match self.json_view_mode {
+            JsonViewMode::Pretty => {
+                serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
+            }
+            JsonViewMode::Raw => {
+                serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
+            }
+        };
+        
+        self.json_data = Some(resp); 
         Ok(())
     }
 
     pub async fn handle_endpoint_disconnect(&mut self) -> Result<()> {
+        // self.endpoint_connected = true;
         self.json_data = None;
         Ok(())
     }
