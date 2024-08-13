@@ -36,9 +36,9 @@ fn draw_title<B: Backend>(f: &mut Frame<B>, area: Rect) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::White))
+                .border_style(Style::default().fg(Color::Cyan))
         )
-        .style(Style::default().fg(Color::Yellow))
+        .style(Style::default().fg(Color::Cyan))
         .alignment(Alignment::Center);
     f.render_widget(title, area);
 }
@@ -63,8 +63,9 @@ fn draw_settings_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, 
 
     let settings_block = Block::default()
         .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Gray))
         .title(" Settings ")
-        .title_style(Style::default().fg(Color::White));
+        .title_style(Style::default().fg(Color::Gray));
     f.render_widget(settings_block, chunks[0]);
 
     let settings_chunks = Layout::default()
@@ -97,23 +98,25 @@ fn draw_settings_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, 
     f.render_widget(connect_button, button_chunks[0]);
     f.render_widget(disconnect_button, button_chunks[1]);
 
+    let server_raw_response = app_state.server_raw_response.clone().unwrap_or_else(|| "".to_string());
+
     let status = if app_state.connected {
-        Paragraph::new("Connected")
+        Paragraph::new(server_raw_response)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::White))
+                    .border_style(Style::default().fg(Color::Gray))
                     .title(" Resoponse ")
-                    .title_style(Style::default().fg(Color::White))
+                    .title_style(Style::default().fg(Color::Gray))
             )
     } else {
-        Paragraph::new("Disconnected")
+        Paragraph::new(server_raw_response)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::White))
+                    .border_style(Style::default().fg(Color::Gray))
                     .title(" Resoponse ")
-                    .title_style(Style::default().fg(Color::White))
+                    .title_style(Style::default().fg(Color::Gray))
             )
     };
     f.render_widget(status, chunks[1]);
@@ -140,7 +143,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         .border_style(Style::default().fg(if app_state.focused_endpoint_field.is_some() {
             Color::Yellow
         } else {
-            Color::White
+            Color::Gray
         }));
     f.render_widget(request_block, chunks[1]);
 
@@ -168,9 +171,11 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         .block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Gray))
                 .title(" Method ID ")
-                .title_style(Style::default().fg(Color::White)),
+                .title_style(Style::default().fg(Color::Gray)),
         )
+        .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Left);
     f.render_widget(method_id_paragraph, request_chunks[0]);
 
@@ -179,9 +184,11 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         .block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Gray))
                 .title(" Seq ")
-                .title_style(Style::default().fg(Color::White)),
+                .title_style(Style::default().fg(Color::Gray)),
         )
+        .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Left);
     f.render_widget(seq_paragraph, request_chunks[1]);
 

@@ -4,14 +4,14 @@ use ratatui::{
 };
 
 pub fn create_json_viewer<'a>(json_data: &'a Option<String>) -> Paragraph<'a> {
-    let json_display = json_data.as_deref().unwrap_or("{}");
+    let json_display = json_data.as_deref().unwrap_or("");
 
     Paragraph::new(json_display)
-        .style(Style::default().fg(Color::White))
+        .style(Style::default().fg(Color::Gray))
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Response ")
-                .title_style(Style::default().fg(Color::White)),
+                .title_style(Style::default().fg(Color::Gray)),
         )
 }

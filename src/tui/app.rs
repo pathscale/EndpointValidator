@@ -47,7 +47,7 @@ pub async fn run() -> Result<(), io::Error> {
                 }
                 KeyCode::Right => app_state.move_focus_right(),
                 KeyCode::Left => app_state.move_focus_left(),
-                KeyCode::Enter => app_state.handle_enter(),
+                KeyCode::Enter => app_state.handle_enter().await,
                 KeyCode::Tab => app_state.switch_screen(),
                 KeyCode::Esc => break,
                 _ => {}
