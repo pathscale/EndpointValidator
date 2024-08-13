@@ -1,8 +1,0 @@
-server_url = "ws://localhost:8443"
-credentials = "0login, 1dev0, 2C5SJCSKSEHK62WV9ENWK6D3K, 3User, 424787297130491616, 5android"
-services_path = "docs/services.json"
-error_codes_path = "docs/error_codes/error_codes.json"
-endpoints_path = "docs/trading_be_alive_endpoints.json"
-
-# method_id = 20670
-# params = "{}"
