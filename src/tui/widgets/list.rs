@@ -25,6 +25,6 @@ pub fn create_list_widget<'a>(items: &'a [String], selected: usize, is_focused: 
     };
 
     List::new(list_items)
-        .block(Block::default().borders(Borders::ALL).title(" Endpoints ").border_style(Style::default().fg(border_color)))
+        .block(Block::default().borders(Borders::ALL).title(" Endpoint List ").border_style(Style::default().fg(border_color)))
         .highlight_style(Style::default().bg(Color::Blue).fg(Color::Gray))
 }

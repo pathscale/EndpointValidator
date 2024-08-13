@@ -1,5 +1,5 @@
 use crate::ws::WsClient;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
@@ -20,9 +20,10 @@ pub enum EndpointField {
 }
 
 #[derive(PartialEq)]
-pub enum AppScreen {
+pub enum AppBlock {
     Settings,
-    Endpoints,
+    EndpointList,
+    EndpointsReq,
 }
 
 #[derive(PartialEq)]
@@ -33,8 +34,7 @@ pub enum JsonViewMode {
 
 pub struct AppState {
     pub client: Option<WsClient>,
-    pub server_raw_response: Option<String>,
-    pub current_screen: AppScreen,
+    pub current_block: AppBlock,
     pub focused_settings_field: Option<SettingsField>,
     pub focused_endpoint_field: Option<EndpointField>,
     pub connected: bool,
@@ -49,7 +49,6 @@ pub struct AppState {
     pub endpoints: Vec<String>,
     pub selected_endpoint: usize,
     pub endpoint_data: HashMap<String, (String, String, Vec<String>)>,
-    pub in_left_chunk: bool,
 }
 
 impl AppState {
@@ -60,10 +59,9 @@ impl AppState {
 
         Self {
             client: None,
-            server_raw_response: None,
-            current_screen: AppScreen::Settings,
+            current_block: AppBlock::Settings,
             focused_settings_field: Some(SettingsField::Url),
-            focused_endpoint_field: None,
+            focused_endpoint_field: Some(EndpointField::Param(0)),
             connected: false,
             url: String::new(),
             username: String::new(),
@@ -76,183 +74,141 @@ impl AppState {
             endpoints: vec!["Endpoint 1".to_string(), "Endpoint 2".to_string()],
             selected_endpoint: 0,
             endpoint_data,
-            in_left_chunk: true,
         }
     }
 
+    // Handle user input
     pub fn update_input(&mut self, c: char) {
-        if self.current_screen == AppScreen::Settings {
-            match self.focused_settings_field {
-                Some(SettingsField::Url) => self.url.push(c),
-                Some(SettingsField::Username) => self.username.push(c),
-                Some(SettingsField::Password) => self.password.push(c),
-                _ => {}
-            }
-        } else if self.current_screen == AppScreen::Endpoints {
-            if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
-                if let Some(param) = self.params.get_mut(index) {
-                    param.push(c);
-                }
+        match self.current_block {
+            AppBlock::Settings => self.update_settings_input(c),
+            AppBlock::EndpointsReq => self.update_endpoint_input(c),
+            _ => {}
+        }
+    }
+
+    fn update_settings_input(&mut self, c: char) {
+        match self.focused_settings_field {
+            Some(SettingsField::Url) => self.url.push(c),
+            Some(SettingsField::Username) => self.username.push(c),
+            Some(SettingsField::Password) => self.password.push(c),
+            _ => {}
+        }
+    }
+
+    fn update_endpoint_input(&mut self, c: char) {
+        if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
+            if let Some(param) = self.params.get_mut(index) {
+                param.push(c);
             }
         }
     }
 
     pub fn delete_last_char(&mut self) {
-        if self.current_screen == AppScreen::Settings {
-            match self.focused_settings_field {
-                Some(SettingsField::Url) => { self.url.pop(); },
-                Some(SettingsField::Username) => { self.username.pop(); },
-                Some(SettingsField::Password) => { self.password.pop(); },
-                _ => {}
-            }
-        } else if self.current_screen == AppScreen::Endpoints {
-            if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
-                if let Some(param) = self.params.get_mut(index) {
-                    param.pop();
-                }
+        match self.current_block {
+            AppBlock::Settings => self.delete_last_char_from_settings(),
+            AppBlock::EndpointsReq => self.delete_last_char_from_endpoint(),
+            _ => {}
+        }
+    }
+
+    fn delete_last_char_from_settings(&mut self) {
+        match self.focused_settings_field {
+            Some(SettingsField::Url) => { self.url.pop(); },
+            Some(SettingsField::Username) => { self.username.pop(); },
+            Some(SettingsField::Password) => { self.password.pop(); },
+            _ => {}
+        }
+    }
+
+    fn delete_last_char_from_endpoint(&mut self) {
+        if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
+            if let Some(param) = self.params.get_mut(index) {
+                param.pop();
             }
         }
     }
 
+    // Navigation within blocks
     pub fn next_field(&mut self) {
-        if self.current_screen == AppScreen::Settings {
-            self.focused_settings_field = match self.focused_settings_field {
-                Some(SettingsField::Url) => Some(SettingsField::Username),
-                Some(SettingsField::Username) => Some(SettingsField::Password),
-                Some(SettingsField::Password) => Some(SettingsField::ConnectButton),
-                Some(SettingsField::ConnectButton) => Some(SettingsField::DisconnectButton),
-                Some(SettingsField::DisconnectButton) => Some(SettingsField::Url),
-                None => Some(SettingsField::Url),
-            };
-        } else if self.current_screen == AppScreen::Endpoints {
-            self.focused_endpoint_field = match self.focused_endpoint_field {
-                Some(EndpointField::Param(index)) => {
-                    if index + 1 < self.params.len() {
-                        Some(EndpointField::Param(index + 1))
-                    } else {
-                        Some(EndpointField::ConnectButton)
-                    }
-                }
-                Some(EndpointField::ConnectButton) => Some(EndpointField::DisconnectButton),
-                Some(EndpointField::DisconnectButton) => Some(EndpointField::JsonToggleButton),
-                Some(EndpointField::JsonToggleButton) => Some(EndpointField::Param(0)),
-                None => Some(EndpointField::Param(0)),
-            };
+        match self.current_block {
+            AppBlock::Settings => self.focused_settings_field = self.next_settings_field(),
+            AppBlock::EndpointList => self.select_next_endpoint(),
+            AppBlock::EndpointsReq => self.focused_endpoint_field = self.next_endpoint_field(),
         }
     }
 
     pub fn previous_field(&mut self) {
-        if self.current_screen == AppScreen::Settings {
-            self.focused_settings_field = match self.focused_settings_field {
-                Some(SettingsField::Url) => Some(SettingsField::DisconnectButton),
-                Some(SettingsField::Username) => Some(SettingsField::Url),
-                Some(SettingsField::Password) => Some(SettingsField::Username),
-                Some(SettingsField::ConnectButton) => Some(SettingsField::Password),
-                Some(SettingsField::DisconnectButton) => Some(SettingsField::ConnectButton),
-                None => Some(SettingsField::Url),
-            };
-        } else if self.current_screen == AppScreen::Endpoints {
-            self.focused_endpoint_field = match self.focused_endpoint_field {
-                Some(EndpointField::Param(index)) => {
-                    if index > 0 {
-                        Some(EndpointField::Param(index - 1))
-                    } else {
-                        Some(EndpointField::JsonToggleButton)
-                    }
-                }
-                Some(EndpointField::ConnectButton) => Some(EndpointField::Param(self.params.len() - 1)),
-                Some(EndpointField::DisconnectButton) => Some(EndpointField::ConnectButton),
-                Some(EndpointField::JsonToggleButton) => Some(EndpointField::DisconnectButton),
-                None => Some(EndpointField::Param(0)),
-            };
+        match self.current_block {
+            AppBlock::Settings => self.focused_settings_field = self.previous_settings_field(),
+            AppBlock::EndpointList => self.select_previous_endpoint(),
+            AppBlock::EndpointsReq => self.focused_endpoint_field = self.previous_endpoint_field(),
         }
     }
 
-    pub fn move_focus_right(&mut self) {
-        if self.current_screen == AppScreen::Endpoints && self.in_left_chunk {
-            self.in_left_chunk = false;
-            if !self.params.is_empty() {
-                self.focused_endpoint_field = Some(EndpointField::Param(0));
-            } else {
-                self.focused_endpoint_field = Some(EndpointField::ConnectButton);
+    fn next_settings_field(&self) -> Option<SettingsField> {
+        match self.focused_settings_field {
+            Some(SettingsField::Url) => Some(SettingsField::Username),
+            Some(SettingsField::Username) => Some(SettingsField::Password),
+            Some(SettingsField::Password) => Some(SettingsField::ConnectButton),
+            Some(SettingsField::ConnectButton) => Some(SettingsField::DisconnectButton),
+            Some(SettingsField::DisconnectButton) => Some(SettingsField::Url),
+            None => Some(SettingsField::Url),
+        }
+    }
+
+    fn previous_settings_field(&self) -> Option<SettingsField> {
+        match self.focused_settings_field {
+            Some(SettingsField::Url) => Some(SettingsField::DisconnectButton),
+            Some(SettingsField::Username) => Some(SettingsField::Url),
+            Some(SettingsField::Password) => Some(SettingsField::Username),
+            Some(SettingsField::ConnectButton) => Some(SettingsField::Password),
+            Some(SettingsField::DisconnectButton) => Some(SettingsField::ConnectButton),
+            None => Some(SettingsField::Url),
+        }
+    }
+
+    fn next_endpoint_field(&self) -> Option<EndpointField> {
+        match self.focused_endpoint_field {
+            Some(EndpointField::Param(index)) if index + 1 < self.params.len() => {
+                Some(EndpointField::Param(index + 1))
             }
+            Some(EndpointField::Param(_)) => Some(EndpointField::ConnectButton),
+            Some(EndpointField::ConnectButton) => Some(EndpointField::DisconnectButton),
+            Some(EndpointField::DisconnectButton) => Some(EndpointField::JsonToggleButton),
+            Some(EndpointField::JsonToggleButton) => Some(EndpointField::Param(0)),
+            None => Some(EndpointField::Param(0)),
         }
     }
 
-    pub fn move_focus_left(&mut self) {
-        if self.current_screen == AppScreen::Endpoints && !self.in_left_chunk {
-            self.in_left_chunk = true;
-            self.focused_endpoint_field = None;
-        }
-    }
-
-    pub async fn handle_enter(&mut self) {
-        if self.current_screen == AppScreen::Settings {
-            match self.focused_settings_field {
-                Some(SettingsField::ConnectButton) => {
-                    if let Err(err) = self.handle_connect().await {
-                        self.connected = false;
-                    } 
-                },
-                Some(SettingsField::DisconnectButton) => {
-                    if let Err(err) = self.handle_disconnect().await {
-                        self.connected = true;
-                    } 
-                },
-                _ => {}
+    fn previous_endpoint_field(&self) -> Option<EndpointField> {
+        match self.focused_endpoint_field {
+            Some(EndpointField::Param(index)) if index > 0 => {
+                Some(EndpointField::Param(index - 1))
             }
-        } else if self.current_screen == AppScreen::Endpoints {
-            match self.focused_endpoint_field {
-                Some(EndpointField::ConnectButton) => self.connected = true,
-                Some(EndpointField::DisconnectButton) => self.connected = false,
-                Some(EndpointField::JsonToggleButton) => self.toggle_json_view_mode(),
-                _ => {}
-            }
+            Some(EndpointField::Param(_)) => Some(EndpointField::JsonToggleButton),
+            Some(EndpointField::ConnectButton) => Some(EndpointField::Param(self.params.len() - 1)),
+            Some(EndpointField::DisconnectButton) => Some(EndpointField::ConnectButton),
+            Some(EndpointField::JsonToggleButton) => Some(EndpointField::DisconnectButton),
+            None => Some(EndpointField::Param(0)),
         }
     }
 
-    pub async fn handle_disconnect(&mut self) -> Result<()> {
-        if let Some(mut client) = self.client.take() {
-            client.close().await?;
-        }
-        self.connected = false;
-        self.server_raw_response = format!("Disconnected from {}", self.url).into();
-        Ok(())
-    }
-
-    pub async fn handle_connect(&mut self) -> Result<()> {
-        let headers = format!(
-            "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
-            self.username, self.password
-        );
-        let mut client = WsClient::new(&self.url, &headers)
-            .await
-            .context("Failed to connect to WebSocket")?;
-        self.client = Some(client);
-        if let Some(client) = &mut self.client {
-            let response = client.recv_raw().await?;
-            self.server_raw_response = format!(
-                "Connected to {}\n{}",
-                self.url,
-                serde_json::to_string_pretty(&response)?
-            ).into();
-        }
-        self.connected = true;
-        Ok(())
-    }
-
-    pub fn switch_screen(&mut self) {
-        self.current_screen = match self.current_screen {
-            AppScreen::Settings => {
+    // Block switching
+    pub fn switch_block(&mut self) {
+        self.current_block = match self.current_block {
+            AppBlock::Settings => {
                 self.update_selected_endpoint_data();
-                AppScreen::Endpoints
+                AppBlock::EndpointList 
+            },
+            AppBlock::EndpointList => {
+                self.update_selected_endpoint_data();
+                AppBlock::EndpointsReq
             }
-            AppScreen::Endpoints => {
-                AppScreen::Settings
-            }
+            AppBlock::EndpointsReq => AppBlock::Settings,
         };
     }
 
+    // Endpoint selection
     pub fn select_next_endpoint(&mut self) {
         if self.selected_endpoint < self.endpoints.len() - 1 {
             self.selected_endpoint += 1;
@@ -277,11 +233,83 @@ impl AppState {
         }
     }
 
+    // JSON view toggle
     pub fn toggle_json_view_mode(&mut self) {
         self.json_view_mode = match self.json_view_mode {
             JsonViewMode::Pretty => JsonViewMode::Raw,
             JsonViewMode::Raw => JsonViewMode::Pretty,
         };
+    }
+
+    // Handle connection and disconnection
+    pub async fn handle_enter(&mut self) -> Result<()> {
+        if self.current_block == AppBlock::Settings {
+            match self.focused_settings_field {
+                Some(SettingsField::ConnectButton) => {
+                    if let Err(err) = self.handle_connect().await {
+                        self.connected = false;
+                    }
+                }
+                Some(SettingsField::DisconnectButton) => {
+                    if let Err(err) = self.handle_disconnect().await {
+                        self.connected = true;
+                    }
+                }
+                _ => {}
+            }
+        } else if self.current_block == AppBlock::EndpointsReq {
+            match self.focused_endpoint_field {
+                Some(EndpointField::ConnectButton) => {
+                    if let Err(err) = self.handle_endpoint_connect().await {
+                    }
+                }
+                Some(EndpointField::DisconnectButton) => {
+                    if let Err(err) = self.handle_endpoint_disconnect().await {
+                    }
+                }
+                Some(EndpointField::JsonToggleButton) => self.toggle_json_view_mode(),
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn handle_connect(&mut self) -> Result<()> {
+        let headers = format!(
+            "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
+            self.username, self.password
+        );
+        let client = WsClient::new(&self.url, &headers)
+            .await
+            .context("Failed to connect to WebSocket")?;
+        self.client = Some(client);
+        self.connected = true;
+        Ok(())
+    }
+
+    pub async fn handle_disconnect(&mut self) -> Result<()> {
+        if let Some(mut client) = self.client.take() {
+            client.close().await?;
+        }
+        self.connected = false;
+        Ok(())
+    }
+
+    pub async fn handle_endpoint_connect(&mut self) -> Result<()> {
+        // if let Some(client) = self.client.as_mut() {
+        //     let response = client
+        //         .send_req(self.method_id.clone(), &self.params)
+        //         .await
+        //         .context("Failed to send request to endpoint")?;
+        //     self.json_data = Some(serde_json::to_string_pretty(&response)?);
+        // }
+        Ok(())
+    }
+
+    pub async fn handle_endpoint_disconnect(&mut self) -> Result<()> {
+        self.json_data = None;
+        Ok(())
     }
 }
 
