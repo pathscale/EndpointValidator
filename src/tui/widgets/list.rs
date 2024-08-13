@@ -1,7 +1,7 @@
 use ratatui::{
     style::{Color, Style, Modifier},
+    text::{Span, Spans},
     widgets::{Block, Borders, List, ListItem},
-    text::Span,
 };
 
 pub fn create_list_widget<'a>(
@@ -23,12 +23,18 @@ pub fn create_list_widget<'a>(
         })
         .collect();
 
+    let title = Spans::from(vec![Span::styled(
+        "Endpoints",
+        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+    )]);
+
     let list = List::new(list_items)
-        .block(Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }))
-            .title("Endpoints")
-            .title_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray })))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }))
+                .title(title),
+        )
         .highlight_style(Style::default().fg(Color::LightCyan).add_modifier(Modifier::BOLD));
 
     list

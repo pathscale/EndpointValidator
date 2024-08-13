@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use futures::{SinkExt, StreamExt};
 use reqwest::header::HeaderValue;
 use serde::de::DeserializeOwned;
@@ -8,8 +8,8 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Message};
 use tracing::*;
 
-use crate::log::LogLevel;
-use crate::ws::{WsLogResponse, WsRequestGeneric, WsResponseGeneric, WsResponseValue};
+// use crate::log::LogLevel;
+use crate::ws::{WsRequestGeneric, WsResponseValue};
 
 pub trait WsRequest: Serialize + DeserializeOwned + Send + Sync + Clone {
     type Response: WsResponse;
@@ -62,65 +62,6 @@ impl WsClient {
         let resp: WsResponseValue = serde_json::from_str(&msg.to_string())
             .context("Failed to deserialize raw response")?;
         Ok(resp)
-    }
-
-    pub async fn recv_resp<T: DeserializeOwned>(&mut self) -> Result<T> {
-        loop {
-            let msg = self.stream.next().await.ok_or_else(|| anyhow!("Connection closed"))?
-                .context("Failed to receive message")?;
-            match msg {
-                Message::Text(text) => {
-                    debug!("recv resp: {}", text);
-                    let resp: WsResponseGeneric<T> = serde_json::from_str(&text)
-                        .context("Failed to deserialize response")?;
-                    
-                    match resp {
-                        WsResponseGeneric::Immediate(resp) if resp.seq == self.seq => {
-                            return Ok(resp.params);
-                        }
-                        WsResponseGeneric::Immediate(resp) => {
-                            bail!("Seq mismatch: expected {}, got {}", self.seq, resp.seq);
-                        }
-                        WsResponseGeneric::Stream(_) => {
-                            debug!("Expected immediate response, got stream");
-                        }
-                        WsResponseGeneric::Forwarded(_) => {
-                            debug!("Expected immediate response, got forwarded");
-                        }
-                        WsResponseGeneric::Close => {
-                            bail!("Connection closed by server");
-                        }
-                        WsResponseGeneric::Log(WsLogResponse {
-                            log_id,
-                            level,
-                            message,
-                            ..
-                        }) => match level {
-                            LogLevel::Error => error!(?log_id, "{}", message),
-                            LogLevel::Warn => warn!(?log_id, "{}", message),
-                            LogLevel::Info => info!(?log_id, "{}", message),
-                            LogLevel::Debug => debug!(?log_id, "{}", message),
-                            LogLevel::Trace => trace!(?log_id, "{}", message),
-                            LogLevel::Detail => trace!(?log_id, "{}", message),
-                            LogLevel::Off => {}
-                        },
-                        WsResponseGeneric::Error(err) => {
-                            bail!("Error: {} {:?}", err.code, err.params);
-                        }
-                    }
-                }
-                Message::Close(_) => {
-                    self.stream.close(None).await.context("Failed to close connection")?;
-                    bail!("Connection closed");
-                }
-                _ => {}
-            }
-        }
-    }
-
-    pub async fn request<T: WsRequest>(&mut self, params: T) -> Result<T::Response> {
-        self.send_req(T::METHOD_ID, params).await?;
-        self.recv_resp().await
     }
 
     pub async fn close(mut self) -> Result<()> {

@@ -9,7 +9,6 @@ pub struct WsRequestGeneric<Req> {
     pub seq: u32,
     pub params: Req,
 }
-pub type WsRequestValue = WsRequestGeneric<Value>;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct WsResponseError {
@@ -19,9 +18,6 @@ pub struct WsResponseError {
     pub log_id: String,
     pub params: Value,
 }
-
-pub type WsSuccessResponse = WsSuccessResponseGeneric<Value>;
-pub type WsStreamResponse = WsStreamResponseGeneric<Value>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WsForwardedResponse {

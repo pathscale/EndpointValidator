@@ -1,4 +1,4 @@
-use crate::tui::state::{AppState, AppBlock, EndpointField, SettingsField};
+use crate::tui::state::{AppState};
 use crate::tui::ui::draw_ui;
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
