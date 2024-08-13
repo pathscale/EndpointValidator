@@ -1,5 +1,5 @@
 use crate::ws::WsClient;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
@@ -284,12 +284,12 @@ impl AppState {
         if self.current_block == AppBlock::Settings {
             match self.focused_settings_field {
                 Some(SettingsField::ConnectButton) => {
-                    if let Err(err) = self.handle_connect().await {
+                    if let Err(_err) = self.handle_connect().await {
                         self.connected = false;
                     }
                 }
                 Some(SettingsField::DisconnectButton) => {
-                    if let Err(err) = self.handle_disconnect().await {
+                    if let Err(_err) = self.handle_disconnect().await {
                         self.connected = true;
                     }
                 }
@@ -298,11 +298,11 @@ impl AppState {
         } else if self.current_block == AppBlock::EndpointsReq {
             match self.focused_endpoint_field {
                 Some(EndpointField::ConnectButton) => {
-                    if let Err(err) = self.handle_endpoint_connect().await {
+                    if let Err(_err) = self.handle_endpoint_connect().await {
                     }
                 }
                 Some(EndpointField::DisconnectButton) => {
-                    if let Err(err) = self.handle_endpoint_disconnect().await {
+                    if let Err(_err) = self.handle_endpoint_disconnect().await {
                     }
                 }
                 Some(EndpointField::JsonToggleButton) => self.toggle_json_view_mode(),
@@ -341,7 +341,7 @@ impl AppState {
     }
 
     pub async fn handle_disconnect(&mut self) -> Result<()> {
-        if let Some(mut client) = self.client.take() {
+        if let Some(client) = self.client.take() {
             client.close().await?;
         }
         let resp = format!("Disconnected from to {}", self.url);

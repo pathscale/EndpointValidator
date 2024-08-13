@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
     widgets::{Block, Borders, Paragraph},
     style::{Color, Style},
-    text::Text,
+    text::{Span, Spans, Text},
 };
 
 pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState) {
@@ -42,11 +42,15 @@ fn draw_help_text<B: Backend>(f: &mut Frame<B>, area: Rect) {
 
 fn draw_settings_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {
     let is_focused = app_state.current_block == AppBlock::Settings;
+    let title = Spans::from(vec![Span::styled(
+        " Settings ",
+        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+    )]);
+
     let settings_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }))
-        .title(" Settings ")
-        .title_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }));
+        .title(title);
 
     f.render_widget(settings_block, area);
 
@@ -100,39 +104,38 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         );
         f.render_widget(list_widget, endpoint_chunks[0]);
     } else {
+        let title = Spans::from(vec![Span::styled(
+            " Endpoint List ",
+            Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+        )]);
+
         let empty_block = Block::default()
             .borders(Borders::ALL)
-            .title(" Endpoint List ")
             .border_style(Style::default().fg(if is_focused {
                 Color::Yellow
             } else {
                 Color::Gray
             }))
-            .title_style(Style::default().fg(if is_focused {
-                Color::Yellow
-            } else {
-                Color::Gray
-            }));
+            .title(title);
 
         f.render_widget(empty_block, endpoint_chunks[0]);
     }
 
-
     let is_focused = app_state.current_block == AppBlock::EndpointsReq;
+
+    let title = Spans::from(vec![Span::styled(
+        " Request ",
+        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+    )]);
 
     let request_block = Block::default()
         .borders(Borders::ALL)
-        .title(" Request ")
         .border_style(Style::default().fg(if is_focused {
             Color::Yellow
         } else {
             Color::Gray
         }))
-        .title_style(Style::default().fg(if is_focused {
-            Color::Yellow
-        } else {
-            Color::Gray
-        }));
+        .title(title);
 
     f.render_widget(request_block, endpoint_chunks[1]);
 
@@ -163,8 +166,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Gray))
-                .title(" Service Name ")
-                .title_style(Style::default().fg(Color::Gray)),
+                .title(" Service Name "),
         )
         .style(Style::default().fg(Color::Gray))
         .alignment(ratatui::layout::Alignment::Left);
@@ -180,8 +182,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Gray))
-                .title(" Method ID ")
-                .title_style(Style::default().fg(Color::Gray)),
+                .title(" Method ID "),
         )
         .style(Style::default().fg(Color::Gray))
         .alignment(ratatui::layout::Alignment::Left);
@@ -232,7 +233,6 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
 }
 
 fn draw_response_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {    
-
     let is_focused = app_state.current_block == AppBlock::EndpointsRes;
     let json_viewer = create_json_viewer(&app_state.json_data, is_focused)
         .scroll((app_state.response_scroll.0, app_state.response_scroll.1));
