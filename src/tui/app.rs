@@ -6,9 +6,10 @@ use crossterm::execute;
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io;
-use anyhow::Result;  // Import anyhow::Result for better error handling
+use anyhow::Result;
+use std::collections::HashMap;
 
-pub async fn run() -> Result<()> {  // Ensure the return type is anyhow::Result
+pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, (String, u32, Vec<String>)>) -> Result<()> {  // Ensure the return type is anyhow::Result
     // Set up terminal in raw mode
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -17,7 +18,7 @@ pub async fn run() -> Result<()> {  // Ensure the return type is anyhow::Result
     let mut terminal = Terminal::new(backend)?;
 
     // Initialize app state
-    let mut app_state = AppState::new();
+    let mut app_state = AppState::new(endpoint_names, endpoint_data);
 
     // Main event loop
     loop {
@@ -25,13 +26,15 @@ pub async fn run() -> Result<()> {  // Ensure the return type is anyhow::Result
 
         if let Event::Key(key) = event::read()? {
             match key.code {
-                KeyCode::Char(c) => app_state.update_input(c), // Handle character input
-                KeyCode::Backspace => app_state.delete_last_char(), // Handle backspace
-                KeyCode::Tab => app_state.switch_block(), // Switch between blocks (e.g., settings and endpoints)
-                KeyCode::Down => app_state.next_field(), // Move to the next input field
-                KeyCode::Up => app_state.previous_field(), // Move to the previous input field
-                KeyCode::Enter => app_state.handle_enter().await?, // Handle the Enter key for actions like connect/disconnect
-                KeyCode::Esc => break, // Exit the application
+                KeyCode::Char(c) => app_state.update_input(c),
+                KeyCode::Backspace => app_state.delete_last_char(),
+                KeyCode::Tab => app_state.switch_block(),
+                KeyCode::Left => app_state.scroll_response_left(),
+                KeyCode::Right => app_state.scroll_response_right(),
+                KeyCode::Down => app_state.next_field(),
+                KeyCode::Up => app_state.previous_field(),
+                KeyCode::Enter => app_state.handle_enter().await?,
+                KeyCode::Esc => break,
                 _ => {}
             }
         }

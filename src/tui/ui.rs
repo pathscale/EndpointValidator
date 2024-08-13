@@ -11,6 +11,7 @@ use ratatui::{
     Frame,
     widgets::{Block, Borders, Paragraph},
     style::{Color, Style},
+    text::Text,
 };
 
 pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState) {
@@ -23,7 +24,7 @@ pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState) {
 
     let main_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref())
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(chunks[1]);
 
     draw_endpoints_screen(f, app_state, main_chunks[0]);
@@ -86,18 +87,36 @@ fn draw_settings_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, 
 
 fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {
     let endpoint_chunks = Layout::default()
-        .direction(Direction::Vertical)
+        .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(area);
 
     let is_focused = app_state.current_block == AppBlock::EndpointList;
+    if app_state.connected {
+        let list_widget = create_list_widget(
+            &app_state.endpoints,
+            app_state.selected_endpoint,
+            is_focused,
+        );
+        f.render_widget(list_widget, endpoint_chunks[0]);
+    } else {
+        let empty_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Endpoint List ")
+            .border_style(Style::default().fg(if is_focused {
+                Color::Yellow
+            } else {
+                Color::Gray
+            }))
+            .title_style(Style::default().fg(if is_focused {
+                Color::Yellow
+            } else {
+                Color::Gray
+            }));
 
-    let list_widget = create_list_widget(
-        &app_state.endpoints,
-        app_state.selected_endpoint,
-        is_focused,
-    );
-    f.render_widget(list_widget, endpoint_chunks[0]);
+        f.render_widget(empty_block, endpoint_chunks[0]);
+    }
+
 
     let is_focused = app_state.current_block == AppBlock::EndpointsReq;
 
@@ -134,7 +153,29 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         .margin(1)
         .split(endpoint_chunks[1]);
 
-    let method_id_paragraph = Paragraph::new(app_state.method_id.clone())
+    let service_name_text = match &app_state.service_name {
+        Some(service_name) => service_name.clone(),
+        None => String::from(""),
+    };
+
+    let service_name_paragraph = Paragraph::new(Text::raw(service_name_text))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Gray))
+                .title(" Service Name ")
+                .title_style(Style::default().fg(Color::Gray)),
+        )
+        .style(Style::default().fg(Color::Gray))
+        .alignment(ratatui::layout::Alignment::Left);
+    f.render_widget(service_name_paragraph, request_chunks[0]);
+
+    let method_id_text = match app_state.method_id {
+        Some(method_id) => method_id.to_string(),
+        None => String::from(""),
+    };
+    
+    let method_id_paragraph = Paragraph::new(Text::raw(method_id_text))
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -144,25 +185,13 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         )
         .style(Style::default().fg(Color::Gray))
         .alignment(ratatui::layout::Alignment::Left);
-    f.render_widget(method_id_paragraph, request_chunks[0]);
-
-    let seq_paragraph = Paragraph::new(app_state.seq.clone())
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Gray))
-                .title(" Seq ")
-                .title_style(Style::default().fg(Color::Gray)),
-        )
-        .style(Style::default().fg(Color::Gray))
-        .alignment(ratatui::layout::Alignment::Left);
-    f.render_widget(seq_paragraph, request_chunks[1]);
+    f.render_widget(method_id_paragraph, request_chunks[1]);
 
     for (i, param) in app_state.params.iter().enumerate() {
-        let param_label = format!(" Param{} ", i + 1);
+        let param_label = format!(" {} ", param);
         let param_input = create_input_widget(
             &param_label,
-            param,
+            "",
             app_state.focused_endpoint_field == Some(EndpointField::Param(i)),
         );
         f.render_widget(param_input, request_chunks[i + 2]);
@@ -176,13 +205,13 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
 
     let connect_button = create_button(
         "Connect",
-        !app_state.connected,
+        !app_state.endpoint_connected,
         app_state.focused_endpoint_field == Some(EndpointField::ConnectButton),
     );
 
     let disconnect_button = create_button(
         "Disconnect",
-        app_state.connected,
+        app_state.endpoint_connected,
         app_state.focused_endpoint_field == Some(EndpointField::DisconnectButton),
     );
 
@@ -202,14 +231,10 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
     f.render_widget(json_toggle_button, request_chunks[request_chunks.len() - 2]);
 }
 
-fn draw_response_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {
-    let response_block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Gray))
-        .title(" Response ")
-        .title_style(Style::default().fg(Color::Gray));
+fn draw_response_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {    
 
-    let json_viewer = create_json_viewer(&app_state.json_data);
+    let is_focused = app_state.current_block == AppBlock::EndpointsRes;
+    let json_viewer = create_json_viewer(&app_state.json_data, is_focused)
+        .scroll((app_state.response_scroll.0, app_state.response_scroll.1));
     f.render_widget(json_viewer, area);
-    f.render_widget(response_block, area);
 }
