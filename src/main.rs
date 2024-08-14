@@ -1,7 +1,6 @@
 mod cli;
 mod tui;
 mod ws;
-mod log;    
 mod parser;
 
 #[tokio::main]
