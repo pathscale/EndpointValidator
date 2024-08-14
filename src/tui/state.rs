@@ -90,12 +90,16 @@ impl AppState {
     }
 
     pub fn scroll_response_right(&mut self) {
-        self.response_scroll.1 += 1;
+        if self.current_block == AppBlock::EndpointsRes {
+            self.response_scroll.1 += 1;
+        }
     }
 
     pub fn scroll_response_left(&mut self) {
-        if self.response_scroll.1 > 0 {
-            self.response_scroll.1 -= 1;
+        if self.current_block == AppBlock::EndpointsRes {
+            if self.response_scroll.1 > 0 {
+                self.response_scroll.1 -= 1;
+            }
         }
     }
 
@@ -302,11 +306,13 @@ impl AppState {
                 Some(SettingsField::ConnectButton) => {
                     if let Err(_err) = self.handle_connect().await {
                         self.connected = false;
+                        self.json_data = Some(_err.to_string());
                     }
                 }
                 Some(SettingsField::DisconnectButton) => {
                     if let Err(_err) = self.handle_disconnect().await {
                         self.connected = true;
+                        self.json_data = Some(_err.to_string());
                     }
                 }
                 _ => {}
@@ -315,10 +321,12 @@ impl AppState {
             match self.focused_endpoint_field {
                 Some(EndpointField::ConnectButton) => {
                     if let Err(_err) = self.handle_endpoint_connect().await {
+                        self.json_data = Some(_err.to_string());
                     }
                 }
                 Some(EndpointField::DisconnectButton) => {
                     if let Err(_err) = self.handle_endpoint_disconnect().await {
+                        self.json_data = Some(_err.to_string());
                     }
                 }
                 Some(EndpointField::JsonToggleButton) => self.toggle_json_view_mode(),
@@ -334,13 +342,15 @@ impl AppState {
             "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
             self.username, self.password
         );
+        
         let client = WsClient::new(&self.url, &headers)
             .await
             .context("Failed to connect to WebSocket")?;
         self.client = Some(client);
-        
+    
         let client = self.client.as_mut().context("WebSocket client is not connected")?;
         let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
+        
         let formatted_response = match self.json_view_mode {
             JsonViewMode::Pretty => {
                 serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
@@ -349,12 +359,14 @@ impl AppState {
                 serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
             }
         };
+        
         let resp = format!("Connected to {}\n{}", self.url, formatted_response);        
         self.json_data = Some(resp);
         self.connected = true;
-
+    
         Ok(())
     }
+    
 
     pub async fn handle_disconnect(&mut self) -> Result<()> {
         if let Some(client) = self.client.take() {
