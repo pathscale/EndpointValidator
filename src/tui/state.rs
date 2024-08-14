@@ -63,7 +63,7 @@ impl AppState {
             focused_endpoint_field: Some(EndpointField::Param(0)),
             connected: false,
             endpoint_connected: false,
-            url: String::new(),
+            url: "ws://localhost:8443".to_string(),
             username: String::new(),
             password: String::new(),
             method_id: None,
@@ -199,52 +199,68 @@ impl AppState {
             Some(EndpointField::Param(_)) => Some(EndpointField::ConnectButton),
             Some(EndpointField::ConnectButton) => Some(EndpointField::DisconnectButton),
             Some(EndpointField::DisconnectButton) => Some(EndpointField::JsonToggleButton),
-            Some(EndpointField::JsonToggleButton) => Some(EndpointField::Param(0)),
-            None => Some(EndpointField::Param(0)),
+            Some(EndpointField::JsonToggleButton) | None => {
+                if self.params.is_empty() {
+                    Some(EndpointField::ConnectButton)
+                } else {
+                    Some(EndpointField::Param(0))
+                }
+            }
         }
     }
-
+    
     fn previous_endpoint_field(&self) -> Option<EndpointField> {
         match self.focused_endpoint_field {
             Some(EndpointField::Param(index)) if index > 0 => {
                 Some(EndpointField::Param(index - 1))
             }
             Some(EndpointField::Param(_)) => Some(EndpointField::JsonToggleButton),
-            Some(EndpointField::ConnectButton) => Some(EndpointField::Param(self.params.len() - 1)),
-            Some(EndpointField::DisconnectButton) => Some(EndpointField::ConnectButton),
             Some(EndpointField::JsonToggleButton) => Some(EndpointField::DisconnectButton),
-            None => Some(EndpointField::Param(0)),
+            Some(EndpointField::DisconnectButton) => Some(EndpointField::ConnectButton),
+            Some(EndpointField::ConnectButton) | None => {
+                if self.params.is_empty() {
+                    Some(EndpointField::JsonToggleButton)
+                } else {
+                    Some(EndpointField::Param(self.params.len() - 1))
+                }
+            }
         }
-    }
-
+    }    
+    
     // Block switching
     pub fn switch_block(&mut self) {
-        self.current_block = match self.current_block {
-            AppBlock::Settings => {
-                self.update_selected_endpoint_data();
-                AppBlock::EndpointList 
-            },
-            AppBlock::EndpointList => {
-                self.update_selected_endpoint_data();
-                AppBlock::EndpointsReq
-            }
-            AppBlock::EndpointsReq => AppBlock::EndpointsRes,
-            AppBlock::EndpointsRes => AppBlock::Settings,
-        };
+        if self.connected {
+            self.current_block = match self.current_block {
+                AppBlock::Settings => {
+                    self.update_selected_endpoint_data();
+                    AppBlock::EndpointList 
+                },
+                AppBlock::EndpointList => {
+                    self.update_selected_endpoint_data();
+                    AppBlock::EndpointsReq
+                }
+                AppBlock::EndpointsReq => AppBlock::EndpointsRes,
+                AppBlock::EndpointsRes => AppBlock::Settings,
+            };
+        }
     }
 
     // Endpoint selection
     pub fn select_next_endpoint(&mut self) {
-        if self.selected_endpoint < self.endpoints.len() - 1 {
-            self.selected_endpoint += 1;
-            self.update_selected_endpoint_data();
+        if self.connected {
+            if self.selected_endpoint < self.endpoints.len() - 1 {
+                self.selected_endpoint += 1;
+                self.update_selected_endpoint_data();
+            }
         }
     }
 
     pub fn select_previous_endpoint(&mut self) {
-        if self.selected_endpoint > 0 {
-            self.selected_endpoint -= 1;
-            self.update_selected_endpoint_data();
+        if self.connected {
+            if self.selected_endpoint > 0 {
+                self.selected_endpoint -= 1;
+                self.update_selected_endpoint_data();
+            }
         }
     }
 
