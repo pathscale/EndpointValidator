@@ -5126,7 +5126,7 @@
           "stream_response": null
         },
         {
-          "code": 20670,
+          "code": 20700,
           "description": "",
           "json_schema": null,
           "name": "UserGetPerformanceMeasurement",
@@ -5151,7 +5151,21 @@
               }
             }
           ],
-          "stream_response": null
+          "stream_response": {
+            "DataTable": {
+              "fields": [
+                {
+                  "name": "function_name",
+                  "ty": "String"
+                },
+                {
+                  "name": "duration_ms",
+                  "ty": "BigInt"
+                }
+              ],
+              "name": "PerformanceMeasurementLog"
+            }
+          }
         }
       ],
       "id": 2,
