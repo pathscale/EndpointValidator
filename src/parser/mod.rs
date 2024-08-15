@@ -4,3 +4,4 @@ mod services;
 
 pub use models::*;
 pub use loader::*;
+pub use services::*;

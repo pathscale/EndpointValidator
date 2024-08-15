@@ -1,4 +1,4 @@
-use crate::parser::{Services, EndpointMetadata, ParameterMetadata, Type};
+use crate::parser::{Services, EndpointMetadata, ParameterMetadata, Type, ParamValue, EndpointData};
 use std::collections::HashMap;
 use anyhow::{Result, anyhow};
 use serde_json::{Value, Number, json};
@@ -137,4 +137,27 @@ impl Type {
             Type::Unit => Ok(Value::Null), // Unit type maps to Null in JSON
         }
     }
+}
+
+pub fn extract_param_defaults(
+    endpoints: &HashMap<String, EndpointData>,
+) -> Vec<(String, Vec<(String, String)>)> {
+    let mut result = Vec::new();
+
+    for (method_id, endpoint_data) in endpoints {
+        let mut param_vec = Vec::new();
+        for (param_name, param_value) in &endpoint_data.params {
+            let value_str = match param_value {
+                ParamValue::String(s) => s.clone(),
+                ParamValue::Number(n) => n.to_string(),
+                ParamValue::Bool(b) => b.to_string(),
+                ParamValue::Array(arr) => format!("{:?}", arr),
+                ParamValue::Object(obj) => format!("{:?}", obj),
+            };
+            param_vec.push((param_name.clone(), value_str));
+        }
+        result.push((method_id.clone(), param_vec));
+    }
+
+    result
 }

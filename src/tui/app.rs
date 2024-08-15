@@ -1,6 +1,6 @@
 use crate::tui::state::{AppState};
 use crate::tui::ui::draw_ui;
-use crate::parser::EndpointMetadata;
+use crate::parser::{EndpointMetadata};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::execute;
@@ -10,7 +10,7 @@ use std::io;
 use anyhow::Result;
 use std::collections::HashMap;
 
-pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>) -> Result<()> {  // Ensure the return type is anyhow::Result
+pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>, param_defaults: Vec<(String, Vec<(String, String)>)>) -> Result<()> {  // Ensure the return type is anyhow::Result
     // Set up terminal in raw mode
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -19,7 +19,7 @@ pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, End
     let mut terminal = Terminal::new(backend)?;
 
     // Initialize app state
-    let mut app_state = AppState::new(endpoint_names, endpoint_data);
+    let mut app_state = AppState::new(endpoint_names, endpoint_data, param_defaults);
 
     // Main event loop
     loop {

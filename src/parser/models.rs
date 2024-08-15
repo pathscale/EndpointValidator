@@ -1,4 +1,6 @@
 use serde::*;
+use std::collections::HashMap;
+
 #[derive(Clone, Debug, Hash, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Field {
     pub name: String,
@@ -114,3 +116,24 @@ pub struct ParameterMetadata {
     pub ty: Type,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    #[serde(flatten)]
+    pub endpoints: HashMap<String, EndpointData>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EndpointData {
+    pub name: String,
+    pub params: HashMap<String, ParamValue>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ParamValue {
+    String(String),
+    Number(i64),
+    Bool(bool),
+    Object(HashMap<String, ParamValue>),
+    Array(Vec<ParamValue>),
+}
