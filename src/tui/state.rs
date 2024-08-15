@@ -1,4 +1,5 @@
 use crate::ws::WsClient;
+use crate::parser::{EndpointMetadata, ParameterMetadata};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 
@@ -45,17 +46,19 @@ pub struct AppState {
     pub password: String,
     pub method_id: Option<u32>,
     pub service_name: Option<String>,
-    pub params: Vec<String>,
+    pub params: Vec<ParameterMetadata>,
+    pub param_values: Vec<String>,
     pub json_view_mode: JsonViewMode,
     pub json_data: Option<String>,
     pub endpoints: Vec<String>,
     pub selected_endpoint: usize,
-    pub endpoint_data: HashMap<String, (String, u32, Vec<String>)>,
+    pub endpoint_data: HashMap<String, EndpointMetadata>,
     pub response_scroll: (u16, u16),
+    pub is_stream: bool,
 }
 
 impl AppState {
-    pub fn new(endpoint_names: Vec<String>, endpoint_data: HashMap<String, (String, u32, Vec<String>)>) -> Self {
+    pub fn new(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>) -> Self {
         Self {
             client: None,
             current_block: AppBlock::Settings,
@@ -69,12 +72,14 @@ impl AppState {
             method_id: None,
             service_name: None,
             params: Vec::new(),
+            param_values: Vec::new(),
             json_view_mode: JsonViewMode::Pretty,
             json_data: None,
             endpoints: endpoint_names,
             selected_endpoint: 0,
             endpoint_data: endpoint_data,
             response_scroll: (0, 0),
+            is_stream: false,
         }
     }
 
@@ -123,7 +128,7 @@ impl AppState {
 
     fn update_endpoint_input(&mut self, c: char) {
         if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
-            if let Some(param) = self.params.get_mut(index) {
+            if let Some(param) = self.param_values.get_mut(index) {
                 param.push(c);
             }
         }
@@ -148,7 +153,7 @@ impl AppState {
 
     fn delete_last_char_from_endpoint(&mut self) {
         if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
-            if let Some(param) = self.params.get_mut(index) {
+            if let Some(param) = self.param_values.get_mut(index) {
                 param.pop();
             }
         }
@@ -270,14 +275,16 @@ impl AppState {
 
     fn update_selected_endpoint_data(&mut self) {
         if let Some(endpoint) = self.endpoints.get(self.selected_endpoint) {
-            if let Some((service_name, method_id, params)) = self.endpoint_data.get(endpoint) {
-                self.method_id = Some(*method_id);
-                self.service_name = Some(service_name.clone());
-                self.params = params.clone();
+            if let Some(metadata) = self.endpoint_data.get(endpoint) {
+                self.method_id = Some(metadata.method_id);
+                self.service_name = Some(metadata.service_name.clone());
+                self.params = metadata.params.clone();
+                self.param_values = vec!["".to_string(); self.params.len()];
+                self.is_stream = metadata.is_stream;
             }
         }
     }
-
+    
     pub fn toggle_json_view_mode(&mut self) {
         if let Some(raw_json) = self.json_data.as_ref() {
             self.json_view_mode = match self.json_view_mode {
@@ -321,11 +328,13 @@ impl AppState {
             match self.focused_endpoint_field {
                 Some(EndpointField::ConnectButton) => {
                     if let Err(_err) = self.handle_endpoint_connect().await {
+                        self.endpoint_connected = false;
                         self.json_data = Some(_err.to_string());
                     }
                 }
                 Some(EndpointField::DisconnectButton) => {
                     if let Err(_err) = self.handle_endpoint_disconnect().await {
+                        self.endpoint_connected = true;
                         self.json_data = Some(_err.to_string());
                     }
                 }
@@ -380,7 +389,7 @@ impl AppState {
 
     pub async fn handle_endpoint_connect(&mut self) -> Result<()> { 
         let client = self.client.as_mut().context("WebSocket client is not connected")?;
-        client.send_req(self.method_id.unwrap(), &self.params).await.context("Failed to send request to WebSocket")?;
+        client.send_req(self.method_id.unwrap(), &self.param_values).await.context("Failed to send request to WebSocket")?;
         let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
 
         let resp = match self.json_view_mode {
@@ -392,12 +401,13 @@ impl AppState {
             }
         };
         
+        self.endpoint_connected = true;
         self.json_data = Some(resp); 
         Ok(())
     }
 
     pub async fn handle_endpoint_disconnect(&mut self) -> Result<()> {
-        // self.endpoint_connected = true;
+        self.endpoint_connected = false;
         self.json_data = None;
         Ok(())
     }

@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 config = "*"
-eyre = "*"
 futures = "*"
 reqwest = { version = "*", default-features = false, features = ["rustls-tls", "serde_json", "json"] }
 serde = { version = "1.0.197", features = ["derive"] }
