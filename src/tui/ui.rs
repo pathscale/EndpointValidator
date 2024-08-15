@@ -189,7 +189,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
     f.render_widget(method_id_paragraph, request_chunks[1]);
 
     for (i, param) in app_state.params.iter().enumerate() {
-        let param_label = format!(" {}:{} ", param.name, param.ty);
+        let param_label = format!(" {}:{:?} ", param.name, param.ty);
         let param_value = app_state.param_values[i].to_string();
         let param_input = create_input_widget(
             &param_label,

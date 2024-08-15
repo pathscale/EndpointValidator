@@ -1,0 +1,405 @@
+# Not Implemented Endpoints
+
+["10020"]
+name = "Login"
+params.username = ""
+params.password = ""
+params.service = ""
+params.device_id = ""
+params.device_os = ""
+
+["10010"]
+name = "Signup"
+params.username = ""
+params.password = ""
+params.email = ""
+params.phone = ""
+params.agreed_tos = true
+params.agreed_privacy = true
+
+["10030"]
+name = "Authorize"
+params.username = ""
+params.token = ""
+params.service = ""
+params.device_id = ""
+params.device_os = ""
+
+["10040"]
+name = "Logout"
+params = {}
+
+["20010"]
+name = "UserSubLogs"
+params = {}
+
+["20020"]
+name = "UserSubEvents"
+params.topic = ""
+
+["20031"]
+name = "UserCancelOrClosePosition"
+params.id = 0
+
+["20100"]
+name = "UserListStrategy"
+params.name = ""
+
+["20110"]
+name = "UserInitStrategy"
+params.strategy_id = 0
+
+["20140"]
+name = "UserControlStrategy"
+params.strategy_id = 0
+params.config = {}
+params.paused = true
+
+["20261"]
+name = "UserGetAccuracy"
+params.symbol = "USDC"
+
+["20300"]
+name = "UserSubLedgerStrategyOne"
+params.symbol = "USDC"
+
+["20301"]
+name = "UserSubLedger"
+params.strategy_id = 0
+params.symbol = "USDC"
+
+["20450"]
+name = "UserSubBestBidAskAcrossExchanges"
+params.unsubscribe_other_symbol = true
+params.symbol = "USDC"
+
+["20470"]
+name = "UserSubSignal2"
+params.symbol = "USDC"
+
+["20650"]
+name = "UserSetS2Configure"
+params.configuration = {}
+
+["20660"]
+name = "UserGetS4BestBidAskAcrossExchangesWithPositionEvent"
+params.id = 0
+params.time_start = ""
+params.time_end = ""
+params.symbol = "USDC"
+
+# Internal Server Error Endpoints
+
+["21010"]
+name = "UserStartService"
+params.keys = [
+    {
+        exchange = "Hyperliquid"
+        account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
+    }
+]
+
+# Resource Not Found Endpoints
+
+["20610"]
+name = "SubS3TerminalBestAskBestBid"
+params.unsubscribe_other_symbol = true
+params.symbol = "USDC"
+
+["20530"]
+name = "UserCancelOrder"
+params.exchange = "Hyperliquid"
+params.symbol = "USDC"
+params.local_id = ""
+
+# Invalid Service Endpoints
+
+["20180"]
+name = "UserGetDebugLog"
+params.limit = 0
+params.page = 0
+
+# Alive Endpoints
+
+["20000"]
+name = "UserStatus"
+params = {}
+
+["20030"]
+name = "UserSubPosition"
+params.unsubscribe = true
+
+["20040"]
+name = "UserSubOrders"
+params.strategy_id = 0
+params.unsubscribe = true
+
+["20120"]
+name = "UserSubPrice0"
+params.unsubscribe_other_symbol = true
+params.symbol = "USDC"
+
+["20130"]
+name = "UserGetPrice0"
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+params.symbol = "USDC"
+
+["20150"]
+name = "UserGetStrategyZeroSymbol"
+params.symbol = "USDC"
+
+["20160"]
+name = "UserSubSignal0"
+params.unsubscribe_other_symbol = true
+params.symbol = "USDC"
+
+["20170"]
+name = "UserGetSignal0"
+params.min_level = ""
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+params.symbol = "USDC"
+
+["21000"]
+name = "UserSetEncryptedKey"
+params.key = [
+    {
+        exchange = "Hyperliquid"
+        account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
+        ciphertext = "UAAAAAAAAAAYAAAAAAAAAGxFVnJWTjhFbndCNndHeU9CcnRpTHZFalAAAAAAAAAApffWNHQHBv/wkFOxDobUhDv1U+dZmxhrGn9cLlilPlQHFxSl+W+IZIuLzxq1HjJlrcRywl9hDtRSJBDI45jH8NieOEgms3TJVHXYFB0l5vo="
+        alias = "Sho wallet"
+    }
+]
+
+["21010"]
+name = "UserStartService"
+params.keys = [
+    {
+        exchange = "Hyperliquid"
+        account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
+    }
+]
+
+["21020"]
+name = "UserSetStrategyStatus"
+params.set_status = [
+    {
+        id = 0
+        status = "disabled"
+    }
+]
+
+["20200"]
+name = "UserGetStrategyOneSymbol"
+params.symbol = "USDC"
+
+["20210"]
+name = "UserSetSymbolFlag1"
+params.flag = true
+params.symbol = "USDC"
+
+["20240"]
+name = "UserGetEvent1"
+params.id = 0
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+params.symbol = "USDC"
+
+["20250"]
+name = "UserSubEvent1"
+params.symbol = "USDC"
+
+["20260"]
+name = "UserGetStrategyOneAccuracy"
+params = {}
+
+["20271"]
+name = "UserGetOrdersPerStrategy"
+params.event_id = 0
+params.client_id = ""
+params.strategy_id = 0
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+params.symbol = "USDC"
+
+["20280"]
+name = "UserSubStrategyOneOrder"
+params.symbol = "USDC"
+
+["20291"]
+name = "UserGetLedger"
+params.client_id = ""
+params.include_ack = true
+params.strategy_id = 0
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+params.symbol = "USDC"
+
+["20292"]
+name = "UserGetHedgedOrders"
+params.strategy_id = 0
+
+["20310"]
+name = "UserGetLiveTestAccuracyLog"
+params.tag = ""
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+
+["20320"]
+name = "UserGetSignal1"
+params.signal = ""
+params.min_level = ""
+params.symbol = "USDC"
+params.time_start = "1723507200000"
+params.time_end = "1723593600000"
+
+["20330"]
+name = "UserSubSignal1"
+params.symbol = "USDC"
+
+["20340"]
+name = "UserGetEncryptedKey"
+params = {}
+
+["20350"]
+name = "UserDeleteEncryptedKey"
+params.exchange = "Hyperliquid"
+params.account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
+
+["20360"]
+name = "UserDecryptEncryptedKey"
+params.encryption_key = "UAAAAAAAAAAYAAAAAAAAAGxFVnJWTjhFbndCNndHeU9CcnRpTHZFalAAAAAAAAAApffWNHQHBv/wkFOxDobUhDv1U+dZmxhrGn9cLlilPlQHFxSl+W+IZIuLzxq1HjJlrcRywl9hDtRSJBDI45jH8NieOEgms3TJVHXYFB0l5vo="
+params.exchange = "Hyperliquid"
+params.account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
+
+["20370"]
+name = "UserGetPriceDifference"
+params.time_start = ""
+params.time_end = ""
+params.symbol = "USDC"
+
+["20380"]
+name = "UserSubPriceDifference"
+params.unsubscribe_other_symbol = true
+params.symbol = "USDC"
+
+["20390"]
+name = "UserSubFundingRates"
+params.exchange = "Hyperliquid"
+params.symbol = "USDC"
+params.unsub = true
+
+["20400"]
+name = "UserAddBlacklist"
+params.strategy_id = 0
+params.list = [
+    {
+      symbol = "USDC"
+    },
+    {
+      symbol = "USDT"
+    }
+]
+
+["20410"]
+name = "UserRemoveBlacklist"
+params.strategy_id = 0
+params.list = [
+    {
+      symbol = "USDC"
+    },
+    {
+      symbol = "USDT"
+    }
+]
+
+["20420"]
+name = "UserGetBlacklist"
+params.strategy_id = 0
+
+["20430"]
+name = "UserGetSymbol2"
+params.symbol = "USDT"
+
+["20440"]
+name = "UserGetBestBidAskAcrossExchanges"
+params.latest = true
+params.time_start = ""
+params.time_end = ""
+params.symbol = "USDT"
+
+["20460"]
+name = "UserGetSignal2"
+params.signal = ""
+params.min_level = ""
+params.symbol = ""
+params.time_start = ""
+params.time_end = ""
+
+["20520"]
+name = "UserPlaceOrderMarket"
+params.exchange = "Hyperliquid"
+params.symbol = "USDT"
+params.side = ""
+params.price = 0
+params.size = 0
+params.local_id = ""
+
+["20521"]
+name = "UserPlaceOrderLimit"
+params.exchange = "Hyperliquid"
+params.symbol = "USDT"
+params.side = ""
+params.price = 0
+params.size = 0
+params.local_id = ""
+
+["20522"]
+name = "UserS3CaptureEvent"
+params.event_id = 0
+
+["20523"]
+name = "UserS3ReleasePosition"
+params.event_id = 0
+
+["20524"]
+name = "UserSubStrategy3PositionsOpening"
+params.unsubscribe = true
+
+["20525"]
+name = "UserSubStrategy3PositionsClosing"
+params.unsubscribe = true
+
+["20540"]
+name = "UserListTradingSymbols"
+params = {}
+
+["20550"]
+name = "UserGetLiveTestCloseOrder1"
+params = {}
+
+["20560"]
+name = "UserSubExchangeLatency"
+params.unsub = true
+params.time_start = ""
+params.time_end = ""
+
+["20620"]
+name = "UserGetBestBidAskAcrossExchangesWithPositionEvent"
+params.id = 0
+params.time_start = ""
+params.time_end = ""
+params.symbol = "USDT"
+
+["20630"]
+name = "UserSubBestBidAskAcrossExchangesWithPositionEvent"
+params.symbol = "USDT"
+
+["20640"]
+name = "UserGet5MinSpreadMean"
+params = {}
+
+["20700"]
+name = "UserGetPerformanceMeasurement"
+params = {}

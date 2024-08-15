@@ -389,7 +389,16 @@ impl AppState {
 
     pub async fn handle_endpoint_connect(&mut self) -> Result<()> { 
         let client = self.client.as_mut().context("WebSocket client is not connected")?;
-        client.send_req(self.method_id.unwrap(), &self.param_values).await.context("Failed to send request to WebSocket")?;
+
+        let mut converted_params = Vec::new();
+        for (param, value) in self.params.iter().zip(self.param_values.iter()) {
+            let converted_value = param.ty
+                .convert_value(value)
+                .context(format!("Failed to convert value for parameter: {}", param.name))?;
+            converted_params.push(converted_value);
+        }
+
+        client.send_req(self.method_id.unwrap(), converted_params).await.context("Failed to send request to WebSocket")?;
         let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
 
         let resp = match self.json_view_mode {
