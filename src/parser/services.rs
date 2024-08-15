@@ -1,5 +1,7 @@
 use crate::parser::{Services, EndpointMetadata, ParameterMetadata, Type};
 use std::collections::HashMap;
+use anyhow::{Result, anyhow};
+use serde_json::{Value, Number, json};
 
 impl Services {
     pub fn extract_endpoints(&self) -> (Vec<String>, HashMap<String, EndpointMetadata>) {
@@ -15,7 +17,7 @@ impl Services {
                     .iter()
                     .map(|param| ParameterMetadata {
                         name: param.name.clone(),
-                        ty: extract_type(&param.ty),
+                        ty: param.ty.clone(),
                     })
                     .collect();
 
@@ -36,50 +38,103 @@ impl Services {
     }
 }
 
-fn extract_type(ty: &Type) -> String {
-    match ty {
-        Type::TimeStampMs => "TimeStampMs".to_string(),
-        Type::Date => "Date".to_string(),
-        Type::Int => "Int".to_string(),
-        Type::BigInt => "BigInt".to_string(),
-        Type::Numeric => "Numeric".to_string(),
-        Type::Boolean => "Boolean".to_string(),
-        Type::String => "String".to_string(),
-        Type::Bytea => "Bytea".to_string(),
-        Type::UUID => "UUID".to_string(),
-        Type::Inet => "Inet".to_string(),
-        Type::Struct { name, fields } => {
-            let fields_str = fields
-                .iter()
-                .map(|field| format!("{}: {}", field.name, extract_type(&field.ty)))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("Struct<{}> {{ {} }}", name, fields_str)
+impl Type {
+    pub fn convert_value(&self, value: &str) -> Result<Value, anyhow::Error> {
+        match self {
+            Type::String => Ok(Value::String(value.to_string())),
+            Type::Int => {
+                let parsed_value: i32 = value.parse().map_err(anyhow::Error::msg)?;
+                Ok(Value::Number(Number::from(parsed_value)))
+            }
+            Type::BigInt => {
+                let parsed_value: i64 = value.parse().map_err(anyhow::Error::msg)?;
+                Ok(Value::Number(Number::from(parsed_value)))
+            }
+            Type::Numeric => {
+                let parsed_value: f64 = value.parse().map_err(anyhow::Error::msg)?;
+                Ok(Value::Number(Number::from_f64(parsed_value).ok_or_else(|| anyhow!("Invalid number"))?))
+            }
+            Type::Boolean => {
+                let parsed_value: bool = value.parse().map_err(anyhow::Error::msg)?;
+                Ok(Value::Bool(parsed_value))
+            }
+            Type::TimeStampMs => {
+                let parsed_value: i64 = value.parse().map_err(anyhow::Error::msg)?;
+                Ok(Value::Number(Number::from(parsed_value)))
+            }
+            Type::Date => Ok(Value::String(value.to_string())), // Assuming dates are strings
+            Type::UUID => Ok(Value::String(value.to_string())), // Assuming UUIDs are strings
+            Type::Inet => Ok(Value::String(value.to_string())), // Assuming Inet is a string representation
+            Type::Bytea => Ok(Value::String(value.to_string())), // Assuming Bytea is a string representation
+            Type::BlockchainDecimal => Ok(Value::String(value.to_string())), // Assuming it’s a string or number
+            Type::BlockchainAddress => Ok(Value::String(value.to_string())), // Assuming it’s a string
+            Type::BlockchainTransactionHash => Ok(Value::String(value.to_string())), // Assuming it’s a string
+            Type::Optional(inner_type) => {
+                if value.is_empty() {
+                    Ok(Value::Null)
+                } else {
+                    inner_type.convert_value(value)
+                }
+            }
+            Type::Vec(inner_type) => {
+                let values: Vec<&str> = value.split(',').collect(); // Assuming comma-separated values
+                let converted_values: Result<Vec<Value>, anyhow::Error> = values.iter().map(|v| inner_type.convert_value(v)).collect();
+                Ok(Value::Array(converted_values?))
+            }
+            Type::Struct { fields, .. } => {
+                let values: HashMap<&str, &str> = value.split(',')
+                    .map(|pair| {
+                        let mut iter = pair.splitn(2, ':');
+                        (iter.next().unwrap(), iter.next().unwrap_or(""))
+                    })
+                    .collect();
+
+                let mut map = serde_json::Map::new();
+                for field in fields {
+                    if let Some(val) = values.get(field.name.as_str()) {
+                        map.insert(field.name.clone(), field.ty.convert_value(val)?);
+                    }
+                }
+                Ok(Value::Object(map))
+            }
+            Type::DataTable { fields, .. } => {
+                let rows: Vec<&str> = value.split(';').collect(); // Assuming rows are separated by semicolons
+                let converted_rows: Result<Vec<Value>, anyhow::Error> = rows.iter().map(|row| {
+                    let values: HashMap<&str, &str> = row.split(',')
+                        .map(|pair| {
+                            let mut iter = pair.splitn(2, ':');
+                            (iter.next().unwrap(), iter.next().unwrap_or(""))
+                        })
+                        .collect();
+
+                    let mut map = serde_json::Map::new();
+                    for field in fields {
+                        if let Some(val) = values.get(field.name.as_str()) {
+                            map.insert(field.name.clone(), field.ty.convert_value(val)?);
+                        }
+                    }
+                    Ok(Value::Object(map))
+                }).collect();
+
+                Ok(Value::Array(converted_rows?))
+            }
+            Type::Enum { name, variants } => {
+                if variants.iter().any(|v| v.name == value) {
+                    Ok(Value::String(value.to_string()))
+                } else {
+                    Err(anyhow!("Invalid variant for enum {}: {}", name, value))
+                }
+            }
+            Type::EnumRef(_name) => {
+                // Assuming EnumRef behaves similarly to Enum
+                Ok(Value::String(value.to_string()))
+            }
+            Type::StructRef(_name) => {
+                // Assuming StructRef behaves similarly to Struct
+                Ok(Value::String(value.to_string()))
+            }
+            Type::Object => Ok(json!(value)), // Assuming object as a string or raw JSON
+            Type::Unit => Ok(Value::Null), // Unit type maps to Null in JSON
         }
-        Type::StructRef(name) => format!("StructRef<{}>", name),
-        Type::Object => "Object".to_string(),
-        Type::DataTable { name, fields } => {
-            let fields_str = fields
-                .iter()
-                .map(|field| format!("{}: {}", field.name, extract_type(&field.ty)))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("DataTable<{}> {{ {} }}", name, fields_str)
-        }
-        Type::Vec(inner_type) => format!("Vec<{}>", extract_type(inner_type)),
-        Type::Unit => "Unit".to_string(),
-        Type::Optional(inner_type) => format!("Optional<{}>", extract_type(inner_type)),
-        Type::Enum { name, variants } => {
-            let variants_str = variants
-                .iter()
-                .map(|variant| variant.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("Enum<{}> {{ {} }}", name, variants_str)
-        }
-        Type::EnumRef(name) => format!("EnumRef<{}>", name),
-        Type::BlockchainDecimal => "BlockchainDecimal".to_string(),
-        Type::BlockchainAddress => "BlockchainAddress".to_string(),
-        Type::BlockchainTransactionHash => "BlockchainTransactionHash".to_string(),
     }
 }

@@ -111,6 +111,6 @@ pub struct EndpointMetadata {
 #[derive(Debug, Clone)]
 pub struct ParameterMetadata {
     pub name: String,
-    pub ty: String,
+    pub ty: Type,
 }
 
