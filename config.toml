@@ -93,10 +93,7 @@ params.symbol = "USDC"
 ["21010"]
 name = "UserStartService"
 params.keys = [
-    {
-        exchange = "Hyperliquid"
-        account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
-    }
+    { exchange = "Hyperliquid", account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE" }
 ]
 
 # Resource Not Found Endpoints
@@ -164,30 +161,13 @@ params.symbol = "USDC"
 ["21000"]
 name = "UserSetEncryptedKey"
 params.key = [
-    {
-        exchange = "Hyperliquid"
-        account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
-        ciphertext = "UAAAAAAAAAAYAAAAAAAAAGxFVnJWTjhFbndCNndHeU9CcnRpTHZFalAAAAAAAAAApffWNHQHBv/wkFOxDobUhDv1U+dZmxhrGn9cLlilPlQHFxSl+W+IZIuLzxq1HjJlrcRywl9hDtRSJBDI45jH8NieOEgms3TJVHXYFB0l5vo="
-        alias = "Sho wallet"
-    }
-]
-
-["21010"]
-name = "UserStartService"
-params.keys = [
-    {
-        exchange = "Hyperliquid"
-        account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE"
-    }
+    { exchange = "Hyperliquid", account_id = "0x4B59DEB69CAF09f73ddb0Ce194f4cb4A06FfEFAE", ciphertext = "UAAAAAAAAAAYAAAAAAAAAGxFVnJWTjhFbndCNndHeU9CcnRpTHZFalAAAAAAAAAApffWNHQHBv/wkFOxDobUhDv1U+dZmxhrGn9cLlilPlQHFxSl+W+IZIuLzxq1HjJlrcRywl9hDtRSJBDI45jH8NieOEgms3TJVHXYFB0l5vo=", alias = "Sho wallet" }
 ]
 
 ["21020"]
 name = "UserSetStrategyStatus"
 params.set_status = [
-    {
-        id = 0
-        status = "disabled"
-    }
+    { id = 0, status = "disabled" }
 ]
 
 ["20200"]
@@ -294,24 +274,16 @@ params.unsub = true
 name = "UserAddBlacklist"
 params.strategy_id = 0
 params.list = [
-    {
-      symbol = "USDC"
-    },
-    {
-      symbol = "USDT"
-    }
+    { symbol = "USDC" },
+    { symbol = "USDT" }
 ]
 
 ["20410"]
 name = "UserRemoveBlacklist"
 params.strategy_id = 0
 params.list = [
-    {
-      symbol = "USDC"
-    },
-    {
-      symbol = "USDT"
-    }
+    { symbol = "USDC" },
+    { symbol = "USDT" }
 ]
 
 ["20420"]

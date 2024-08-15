@@ -8,6 +8,8 @@ pub struct Cli {
     /// Path to the services.json file
     #[arg(long)]
     pub services_path: Option<String>,
+    #[arg(long)]
+    pub config_path: Option<String>,
 }
 
 /// Function to parse command-line arguments

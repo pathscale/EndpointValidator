@@ -48,6 +48,7 @@ pub struct AppState {
     pub service_name: Option<String>,
     pub params: Vec<ParameterMetadata>,
     pub param_values: Vec<String>,
+    pub param_defaults: Vec<(String, Vec<(String, String)>)>,
     pub json_view_mode: JsonViewMode,
     pub json_data: Option<String>,
     pub endpoints: Vec<String>,
@@ -58,7 +59,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>) -> Self {
+    pub fn new(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>, param_defaults: Vec<(String, Vec<(String, String)>)>) -> Self {
         Self {
             client: None,
             current_block: AppBlock::Settings,
@@ -73,6 +74,7 @@ impl AppState {
             service_name: None,
             params: Vec::new(),
             param_values: Vec::new(),
+            param_defaults: param_defaults,
             json_view_mode: JsonViewMode::Pretty,
             json_data: None,
             endpoints: endpoint_names,
@@ -278,12 +280,36 @@ impl AppState {
             if let Some(metadata) = self.endpoint_data.get(endpoint) {
                 self.method_id = Some(metadata.method_id);
                 self.service_name = Some(metadata.service_name.clone());
-                self.params = metadata.params.clone();
-                self.param_values = vec!["".to_string(); self.params.len()];
+    
+                // Sort params by their names
+                self.params = {
+                    let mut sorted_params = metadata.params.clone();
+                    sorted_params.sort_by(|a, b| a.name.cmp(&b.name));
+                    sorted_params
+                };
+    
+                // Check if there are default values for this method_id
+                if let Some((_, defaults)) = self.param_defaults.iter().find(|(id, _)| *id == metadata.method_id.to_string()) {
+                    // Create a map of default values for easy lookup
+                    let default_map: HashMap<_, _> = defaults.iter().cloned().collect();
+    
+                    // Populate param_values with either the default value or an empty string
+                    self.param_values = self.params.iter()
+                        .map(|param| {
+                            default_map.get(&param.name).cloned().unwrap_or_else(|| "".to_string())
+                        })
+                        .collect();
+                } else {
+                    // If no defaults are found, initialize with empty strings
+                    self.param_values = vec!["".to_string(); self.params.len()];
+                }
+    
                 self.is_stream = metadata.is_stream;
             }
         }
     }
+    
+    
     
     pub fn toggle_json_view_mode(&mut self) {
         if let Some(raw_json) = self.json_data.as_ref() {
