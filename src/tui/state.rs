@@ -12,7 +12,7 @@ pub enum SettingsField {
     DisconnectButton,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum EndpointField {
     Param(usize),
     ConnectButton,
