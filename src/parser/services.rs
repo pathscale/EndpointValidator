@@ -1,7 +1,8 @@
 use crate::parser::{Services, EndpointMetadata, ParameterMetadata, Type, ParamValue, EndpointData};
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
 use serde_json::{Value, Number, json};
+use eyre::{ContextCompat, Result};
+use eyre::eyre;
 
 impl Services {
     pub fn extract_endpoints(&self) -> (Vec<String>, HashMap<String, EndpointMetadata>) {
@@ -39,27 +40,27 @@ impl Services {
 }
 
 impl Type {
-    pub fn convert_value(&self, value: &str) -> Result<Value, anyhow::Error> {
+    pub fn convert_value(&self, value: &str) -> Result<Value> {
         match self {
             Type::String => Ok(Value::String(value.to_string())),
             Type::Int => {
-                let parsed_value: i32 = value.parse().map_err(anyhow::Error::msg)?;
+                let parsed_value: i32 = value.parse()?;
                 Ok(Value::Number(Number::from(parsed_value)))
             }
             Type::BigInt => {
-                let parsed_value: i64 = value.parse().map_err(anyhow::Error::msg)?;
+                let parsed_value: i64 = value.parse()?;
                 Ok(Value::Number(Number::from(parsed_value)))
             }
             Type::Numeric => {
-                let parsed_value: f64 = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Number(Number::from_f64(parsed_value).ok_or_else(|| anyhow!("Invalid number"))?))
+                let parsed_value: f64 = value.parse()?;
+                Ok(Value::Number(Number::from_f64(parsed_value).wrap_err("Invalid number")?))
             }
             Type::Boolean => {
-                let parsed_value: bool = value.parse().map_err(anyhow::Error::msg)?;
+                let parsed_value: bool = value.parse()?;
                 Ok(Value::Bool(parsed_value))
             }
             Type::TimeStampMs => {
-                let parsed_value: i64 = value.parse().map_err(anyhow::Error::msg)?;
+                let parsed_value: i64 = value.parse()?;
                 Ok(Value::Number(Number::from(parsed_value)))
             }
             Type::Date => Ok(Value::String(value.to_string())), // Assuming dates are strings
@@ -78,7 +79,7 @@ impl Type {
             }
             Type::Vec(inner_type) => {
                 let values: Vec<&str> = value.split(',').collect(); // Assuming comma-separated values
-                let converted_values: Result<Vec<Value>, anyhow::Error> = values.iter().map(|v| inner_type.convert_value(v)).collect();
+                let converted_values: Result<Vec<Value>> = values.iter().map(|v| inner_type.convert_value(v)).collect();
                 Ok(Value::Array(converted_values?))
             }
             Type::Struct { fields, .. } => {
@@ -99,7 +100,7 @@ impl Type {
             }
             Type::DataTable { fields, .. } => {
                 let rows: Vec<&str> = value.split(';').collect(); // Assuming rows are separated by semicolons
-                let converted_rows: Result<Vec<Value>, anyhow::Error> = rows.iter().map(|row| {
+                let converted_rows: Result<Vec<Value>> = rows.iter().map(|row| {
                     let values: HashMap<&str, &str> = row.split(',')
                         .map(|pair| {
                             let mut iter = pair.splitn(2, ':');
@@ -122,7 +123,7 @@ impl Type {
                 if variants.iter().any(|v| v.name == value) {
                     Ok(Value::String(value.to_string()))
                 } else {
-                    Err(anyhow!("Invalid variant for enum {}: {}", name, value))
+                    Err(eyre!("Invalid variant for enum {}: {}", name, value))
                 }
             }
             Type::EnumRef(_name) => {

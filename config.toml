@@ -1,0 +1,15 @@
+## server_url = "ws://detect-be.insolvent.app:443"
+## credentials = "adsfsdfsdfsdfsdfsdfsdf, 2C5SJCSKSEHK62WV9ENWK6D3K"
+
+[20010]
+name = "UserListEvents"
+params.kind = ""
+params.limit = 0
+params.offset = 0
+
+[20020]
+name = "UserListSignals"
+params.kind = ""
+params.signal_id = 0
+params.limit = 0
+params.offset = 0
