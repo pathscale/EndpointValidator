@@ -1,7 +1,13 @@
-use crate::ws::WsClient;
 use crate::parser::{EndpointMetadata, ParameterMetadata};
-use anyhow::{Context, Result};
+use endpoint_libs::libs::ws::WsClient;
+use reqwest::header::CONNECTION;
+use reqwest::header::SEC_WEBSOCKET_KEY;
+use reqwest::header::SEC_WEBSOCKET_VERSION;
+use reqwest::header::UPGRADE;
 use std::collections::HashMap;
+use eyre::WrapErr;
+use eyre::ContextCompat;
+use eyre::Result;
 
 #[derive(PartialEq)]
 pub enum SettingsField {
@@ -373,12 +379,14 @@ impl AppState {
     }
 
     pub async fn handle_connect(&mut self) -> Result<()> {
-        let headers = format!(
-            "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
-            self.username, self.password
-        );
-        
-        let client = WsClient::new(&self.url, &headers)
+        let headers = vec![
+            (UPGRADE.as_str(), "websocket"),
+            (CONNECTION.as_str(), "keep-alive, Upgrade"),
+            (SEC_WEBSOCKET_KEY.as_str(), "dGhlIHNhbXBsZSBub25jZQ=="),
+            (SEC_WEBSOCKET_VERSION.as_str(), "13"),
+        ];
+
+        let client = WsClient::new(&self.url, "", Some(headers))
             .await
             .context("Failed to connect to WebSocket")?;
         self.client = Some(client);
@@ -420,7 +428,7 @@ impl AppState {
         for (param, value) in self.params.iter().zip(self.param_values.iter()) {
             let converted_value = param.ty
                 .convert_value(value)
-                .context(format!("Failed to convert value for parameter: {}", param.name))?;
+                .wrap_err(format!("Failed to convert value for parameter: {}", param.name))?;
             converted_params.push(converted_value);
         }
 

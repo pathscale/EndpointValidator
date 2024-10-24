@@ -1,0 +1,489 @@
+{
+  "enums": [
+    {
+      "Enum": {
+        "name": "role",
+        "variants": [
+          {
+            "comment": "",
+            "name": "guest",
+            "value": 0
+          },
+          {
+            "comment": "",
+            "name": "user",
+            "value": 1
+          },
+          {
+            "comment": "",
+            "name": "admin",
+            "value": 3
+          },
+          {
+            "comment": "",
+            "name": "developer",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "block_chain",
+        "variants": [
+          {
+            "comment": "",
+            "name": "EthereumMainnet",
+            "value": 0
+          },
+          {
+            "comment": "",
+            "name": "EthereumGoerli",
+            "value": 1
+          },
+          {
+            "comment": "",
+            "name": "BscMainnet",
+            "value": 2
+          },
+          {
+            "comment": "",
+            "name": "BscTestnet",
+            "value": 3
+          },
+          {
+            "comment": "",
+            "name": "LocalNet",
+            "value": 4
+          },
+          {
+            "comment": "",
+            "name": "EthereumSepolia",
+            "value": 5
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "dex",
+        "variants": [
+          {
+            "comment": "",
+            "name": "UniSwap",
+            "value": 0
+          },
+          {
+            "comment": "",
+            "name": "PancakeSwap",
+            "value": 1
+          },
+          {
+            "comment": "",
+            "name": "SushiSwap",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "dex_path_format",
+        "variants": [
+          {
+            "comment": "",
+            "name": "Json",
+            "value": 0
+          },
+          {
+            "comment": "",
+            "name": "TransactionData",
+            "value": 1
+          },
+          {
+            "comment": "",
+            "name": "TransactionHash",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "service",
+        "variants": [
+          {
+            "comment": "",
+            "name": "auth",
+            "value": 1
+          },
+          {
+            "comment": "",
+            "name": "user",
+            "value": 2
+          }
+        ]
+      }
+    }
+  ],
+  "services": [
+    {
+      "endpoints": [
+        {
+          "code": 10020,
+          "description": "",
+          "json_schema": null,
+          "name": "Login",
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "password",
+              "ty": "String"
+            },
+            {
+              "name": "service",
+              "ty": {
+                "EnumRef": "service"
+              }
+            },
+            {
+              "name": "device_id",
+              "ty": "String"
+            },
+            {
+              "name": "device_os",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "display_name",
+              "ty": "String"
+            },
+            {
+              "name": "avatar",
+              "ty": {
+                "Optional": "String"
+              }
+            },
+            {
+              "name": "role",
+              "ty": {
+                "EnumRef": "role"
+              }
+            },
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "user_token",
+              "ty": "UUID"
+            },
+            {
+              "name": "admin_token",
+              "ty": "UUID"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 10010,
+          "description": "",
+          "json_schema": null,
+          "name": "Signup",
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "password",
+              "ty": "String"
+            },
+            {
+              "name": "email",
+              "ty": "String"
+            },
+            {
+              "name": "phone",
+              "ty": "String"
+            },
+            {
+              "name": "agreed_tos",
+              "ty": "Boolean"
+            },
+            {
+              "name": "agreed_privacy",
+              "ty": "Boolean"
+            }
+          ],
+          "returns": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 10030,
+          "description": "",
+          "json_schema": null,
+          "name": "Authorize",
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "token",
+              "ty": "UUID"
+            },
+            {
+              "name": "service",
+              "ty": {
+                "EnumRef": "service"
+              }
+            },
+            {
+              "name": "device_id",
+              "ty": "String"
+            },
+            {
+              "name": "device_os",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "success",
+              "ty": "Boolean"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 10040,
+          "description": "",
+          "json_schema": null,
+          "name": "Logout",
+          "parameters": [],
+          "returns": [],
+          "stream_response": null
+        }
+      ],
+      "id": 1,
+      "name": "auth"
+    },
+    {
+      "endpoints": [
+        {
+          "code": 20010,
+          "description": "",
+          "json_schema": null,
+          "name": "UserListEvents",
+          "parameters": [
+            {
+              "name": "kind",
+              "ty": {
+                "Optional": "Int"
+              }
+            },
+            {
+              "name": "limit",
+              "ty": {
+                "Optional": "Int"
+              }
+            },
+            {
+              "name": "offset",
+              "ty": {
+                "Optional": "Int"
+              }
+            }
+          ],
+          "returns": [
+            {
+              "name": "total",
+              "ty": "BigInt"
+            },
+            {
+              "name": "events",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "event_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "kind",
+                      "ty": "Int"
+                    },
+                    {
+                      "name": "severity",
+                      "ty": "Int"
+                    },
+                    {
+                      "name": "chain_id",
+                      "ty": "Int"
+                    },
+                    {
+                      "name": "block_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "block_time",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "transaction_hash",
+                      "ty": "BlockchainTransactionHash"
+                    },
+                    {
+                      "name": "from_address",
+                      "ty": "BlockchainAddress"
+                    },
+                    {
+                      "name": "contract_address",
+                      "ty": "BlockchainAddress"
+                    },
+                    {
+                      "name": "detail",
+                      "ty": "Object"
+                    },
+                    {
+                      "name": "signals",
+                      "ty": {
+                        "Vec": "Int"
+                      }
+                    },
+                    {
+                      "name": "signal_kinds",
+                      "ty": {
+                        "Vec": "Int"
+                      }
+                    }
+                  ],
+                  "name": "UserListEventsRow"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 20020,
+          "description": "",
+          "json_schema": null,
+          "name": "UserListSignals",
+          "parameters": [
+            {
+              "name": "kind",
+              "ty": {
+                "Optional": "Int"
+              }
+            },
+            {
+              "name": "signal_id",
+              "ty": {
+                "Optional": "BigInt"
+              }
+            },
+            {
+              "name": "limit",
+              "ty": {
+                "Optional": "Int"
+              }
+            },
+            {
+              "name": "offset",
+              "ty": {
+                "Optional": "Int"
+              }
+            }
+          ],
+          "returns": [
+            {
+              "name": "total",
+              "ty": "BigInt"
+            },
+            {
+              "name": "signals",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "signal_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "kind",
+                      "ty": "Int"
+                    },
+                    {
+                      "name": "chain_id",
+                      "ty": "Int"
+                    },
+                    {
+                      "name": "block_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "block_time",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "transaction_hash",
+                      "ty": "BlockchainTransactionHash"
+                    },
+                    {
+                      "name": "from_address",
+                      "ty": "BlockchainAddress"
+                    },
+                    {
+                      "name": "contract_address",
+                      "ty": "BlockchainAddress"
+                    },
+                    {
+                      "name": "detail",
+                      "ty": "Object"
+                    },
+                    {
+                      "name": "value",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "token",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "value_usd",
+                      "ty": "Numeric"
+                    }
+                  ],
+                  "name": "UserListSignalsRow"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        }
+      ],
+      "id": 2,
+      "name": "user"
+    }
+  ]
+}
