@@ -373,30 +373,27 @@ impl AppState {
     }
 
     pub async fn handle_connect(&mut self) -> Result<()> {
-        let headers = format!(
-            "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
-            self.username, self.password
-        );
+        let headers = format!("");
         
         let client = WsClient::new(&self.url, &headers)
             .await
             .context("Failed to connect to WebSocket")?;
         self.client = Some(client);
-    
-        let client = self.client.as_mut().context("WebSocket client is not connected")?;
-        let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
+
+        // let client = self.client.as_mut().context("WebSocket client is not connected")?;
+        // let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
         
-        let formatted_response = match self.json_view_mode {
-            JsonViewMode::Pretty => {
-                serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
-            }
-            JsonViewMode::Raw => {
-                serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
-            }
-        };
+        // let formatted_response = match self.json_view_mode {
+        //     JsonViewMode::Pretty => {
+        //         serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
+        //     }
+        //     JsonViewMode::Raw => {
+        //         serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
+        //     }
+        // };
         
-        let resp = format!("Connected to {}\n{}", self.url, formatted_response);        
-        self.json_data = Some(resp);
+        // let resp: String = format!("Connected to {}\n{}", self.url, formatted_response);        
+        // self.json_data = Some(resp);
         self.connected = true;
     
         Ok(())
