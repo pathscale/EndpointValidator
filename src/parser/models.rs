@@ -125,6 +125,7 @@ pub struct Config {
 #[derive(Debug, Deserialize)]
 pub struct EndpointData {
     pub name: String,
+    #[serde(default)]
     pub params: HashMap<String, ParamValue>,
 }
 
