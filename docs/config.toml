@@ -1,0 +1,5 @@
+[10030]
+name = "Authorize"
+params.username = "user0"
+params.token = "550e8400-e29b-41d4-a716-446655440000"
+params.service = 1

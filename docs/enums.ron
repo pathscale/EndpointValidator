@@ -1,0 +1,43 @@
+#![enable(unwrap_newtypes)]
+#![enable(unwrap_variant_newtypes)]
+Config(
+    definition: EnumList (
+        [
+    Enum(
+        name: "role",
+        variants: [
+            EnumVariant(
+                name: "guest",
+                value: 0,
+                comment: "",
+            ),
+            EnumVariant(
+                name: "user",
+                value: 1,
+                comment: "",
+            ),
+            EnumVariant(
+                name: "admin",
+                value: 4,
+                comment: "",
+            ),
+        ],
+    ),
+    Enum(
+        name: "service",
+        variants: [
+            EnumVariant(
+                name: "auth",
+                value: 1,
+                comment: "",
+            ),
+            EnumVariant(
+                name: "app",
+                value: 2,
+                comment: "",
+            ),
+        ],
+    ),
+]
+    )
+)
