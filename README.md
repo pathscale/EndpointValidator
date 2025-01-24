@@ -2,17 +2,13 @@
 
 ## Overview
 
-This Rust application connects to a WebSocket server and reads configuration from a TOML file. It uses `tokio` for asynchronous operations and `serde` for deserialization.
+This application connects to a WebSocket server to connect to various endpoints for testing and data validation purposes. The app is configured using a TOML file. The available endpoints to test are specified via a json file.
 
 ## Features
 
-- Connects to a WebSocket server.
-- Reads configuration from a `config.toml` file.
-- Asynchronous operations with `tokio`.
-
-## Dependencies
-
-Look at the `Cargo.toml`
+- Connects to a WebSocket server
+- Ability to select and query endpoints with modifiable input parameters 
+- Reads configuration from a `config.toml` file
 
 ## Configuration
 
@@ -29,16 +25,17 @@ To run the **Validator** one needs to have:
 
 ### services
 
-`services.json` file has the structure defined in [models.rs](src/parser/models.rs)
+The `services.json` file contains a JSON list of serialized `EndpointData` structs, as defined in [models.rs](src/parser/models.rs)
 
-The file could be generated using the [EndpointGen](https://github.com/pathscale/EndpointGen.git) tool.
+The file is usually generated using the [EndpointGen](https://github.com/pathscale/EndpointGen.git) tool, but can be handwritten as well.
 
 #### Services file generation
 
-To generate the `services.json` file for the project it should have the description of the endpoints in the `.ron` format.
-The example of the `.ron` configuration file can be found [here](docs/auth.ron). Also, the custom structures and enum values might be 
-described in a separate configuration file. The example of the enum definition can be found [here](docs/enums.ron). All of the files 
-should be placed into `config/` directory inside the project root directory
+As mentioned above, the `services.json` file is usually generated using EndpointGen. The current version of EndpointGen is a binary application that takes `.ron` files containing serialized endpoint definition structs, and generates various websocket server related functionality to make those endpoints available within the application's websocket server.
+
+The exact instructions to use EndpointGen can be found in the EndpointGen repo, linked above. An example `.ron` file can be found [here](docs/auth.ron)
+
+TODO: The instructions below should be moved to newly written EndpointGen readme.
 
 After all the endpoints described in the configuration files, run the command from the project root directory
 to generate the docs + model + `services.json` for the project:
@@ -89,12 +86,11 @@ The functionality is described at the bottom of the screen, however there are us
 3. Navigate with the `bottom` arrow again to the Password
 4. Type the password
 5. Navigate with the `bottom` arrow again to the Connect
-6. Press `enter` to connect to the server
-7. At the left column the available endpoints would appear
-8. To validate the endpoint press the `tab`
-9. Select with the `bottom` arrow the needed endpoint
-10. Press the `tab` again to navigate to the middle menu to specify the parameters of the request
-11. Navigate among the parameters using `bottom` and `up` arrows
-12. Navigate to `connect` button in the middle menu with the `bottom` arrow to execute the request
-13. The response should appear in the right menu
-14. If the response did not appear or updated, try to press enter a couple of times again to repeat the request
+6. Press `Enter` to connect to the server
+7. At the left column the available endpoints as defined in the `services.json` file will appear
+8. Select with the `bottom` arrow the needed endpoint
+9. To validate an endpoint press the `tab` key after selecting the desired endpoint to navigate to the middle menu to specify the parameters of the request
+10. Navigate among the parameters using `bottom` and `up` arrows
+11. Navigate to `connect` button in the middle menu with the `bottom` arrow to execute the request
+12. The response should appear in the right menu
+13. If the response did not appear or updated, try to press enter a couple of times again to repeat the request
