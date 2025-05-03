@@ -1,0 +1,1074 @@
+{
+  "enums": [
+    {
+      "Enum": {
+        "name": "fund_status",
+        "variants": [
+          {
+            "comment": "Fund awaiting approval",
+            "name": "Pending",
+            "value": 1
+          },
+          {
+            "comment": "Fund open for investment",
+            "name": "Active",
+            "value": 2
+          },
+          {
+            "comment": "Fund is no longer active",
+            "name": "Closed",
+            "value": 3
+          },
+          {
+            "comment": "Fund is temporarily suspended",
+            "name": "Suspended",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "fund_strategy",
+        "variants": [
+          {
+            "comment": "Staking strategy",
+            "name": "Staking",
+            "value": 1
+          },
+          {
+            "comment": "Custody strategy",
+            "name": "Custody",
+            "value": 2
+          },
+          {
+            "comment": "Investing strategy",
+            "name": "Investing",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "role",
+        "variants": [
+          {
+            "comment": "The user role defines a person interacting with the service",
+            "name": "user",
+            "value": 1
+          },
+          {
+            "comment": "The fund manager role defines the admin of the fund, which provides services for the users",
+            "name": "fund_manager",
+            "value": 2
+          },
+          {
+            "comment": "The admin role defines the service admin, controlling both users and fund managers",
+            "name": "admin",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "service",
+        "variants": [
+          {
+            "comment": "",
+            "name": "auth",
+            "value": 1
+          },
+          {
+            "comment": "",
+            "name": "user",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "services_of_interest",
+        "variants": [
+          {
+            "comment": "Custody services",
+            "name": "Custody",
+            "value": 1
+          },
+          {
+            "comment": "Staking services",
+            "name": "Staking",
+            "value": 2
+          },
+          {
+            "comment": "Investing services",
+            "name": "Investing",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "wallet_status",
+        "variants": [
+          {
+            "comment": "Active wallet",
+            "name": "Active",
+            "value": 1
+          },
+          {
+            "comment": "Inactive wallet",
+            "name": "Inactive",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "Enum": {
+        "name": "wallet_type",
+        "variants": [
+          {
+            "comment": "External wallet type",
+            "name": "External",
+            "value": 1
+          },
+          {
+            "comment": "Internal wallet type",
+            "name": "Internal",
+            "value": 2
+          }
+        ]
+      }
+    }
+  ],
+  "services": [
+    {
+      "endpoints": [
+        {
+          "code": 10020,
+          "description": "User login",
+          "json_schema": null,
+          "name": "Login",
+          "parameters": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "password",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "display_name",
+              "ty": "String"
+            },
+            {
+              "name": "avatar",
+              "ty": {
+                "Optional": "String"
+              }
+            },
+            {
+              "name": "role",
+              "ty": {
+                "EnumRef": "role"
+              }
+            },
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "user_token",
+              "ty": "UUID"
+            },
+            {
+              "name": "admin_token",
+              "ty": "UUID"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 10021,
+          "description": "User registration",
+          "json_schema": null,
+          "name": "SignUp",
+          "parameters": [
+            {
+              "name": "password",
+              "ty": "String"
+            },
+            {
+              "name": "username",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "username",
+              "ty": "String"
+            },
+            {
+              "name": "display_name",
+              "ty": "String"
+            },
+            {
+              "name": "avatar",
+              "ty": {
+                "Optional": "String"
+              }
+            },
+            {
+              "name": "role",
+              "ty": {
+                "EnumRef": "role"
+              }
+            },
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "user_token",
+              "ty": "UUID"
+            },
+            {
+              "name": "admin_token",
+              "ty": "UUID"
+            }
+          ],
+          "stream_response": null
+        }
+      ],
+      "id": 1,
+      "name": "auth"
+    },
+    {
+      "endpoints": [
+        {
+          "code": 40000,
+          "description": "A simple health check: receives 'ping' and returns 'pong'.",
+          "json_schema": null,
+          "name": "UserPing",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "pong",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 41000,
+          "description": "Fetch the top 3 funds by liquidity or other ranking metric.",
+          "json_schema": null,
+          "name": "UserGetTopFunds",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "data",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "fund_name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "fund_liquidity",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "fund_target_apy",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "fund_address",
+                      "ty": "String"
+                    }
+                  ],
+                  "name": "TopFund"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 41010,
+          "description": "Return details for the specified fund.",
+          "json_schema": null,
+          "name": "UserGetFundDetails",
+          "parameters": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "fund_liquidity",
+              "ty": "Numeric"
+            },
+            {
+              "name": "fund_target_apy",
+              "ty": "Numeric"
+            },
+            {
+              "name": "fund_address",
+              "ty": "String"
+            },
+            {
+              "name": "fund_start_date",
+              "ty": "BigInt"
+            },
+            {
+              "name": "description",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 41020,
+          "description": "List all active funds.",
+          "json_schema": null,
+          "name": "UserListFunds",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "data",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "fund_name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "fund_start_date",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "fund_target_apy",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "fund_address",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "company_name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "email_address",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "phone_number",
+                      "ty": "String"
+                    }
+                  ],
+                  "name": "Fund"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 41030,
+          "description": "Allow a user to register a new fund.",
+          "json_schema": null,
+          "name": "FundManagerSignup",
+          "parameters": [
+            {
+              "name": "allocation_data",
+              "ty": "String"
+            },
+            {
+              "name": "aum",
+              "ty": "Numeric"
+            },
+            {
+              "name": "company_name",
+              "ty": "String"
+            },
+            {
+              "name": "country",
+              "ty": "String"
+            },
+            {
+              "name": "description",
+              "ty": "String"
+            },
+            {
+              "name": "fund_address",
+              "ty": "String"
+            },
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "fund_start_date",
+              "ty": "BigInt"
+            },
+            {
+              "name": "fund_strategy",
+              "ty": {
+                "EnumRef": "fund_strategy"
+              }
+            },
+            {
+              "name": "fund_target_apy",
+              "ty": "Numeric"
+            },
+            {
+              "name": "last_updated_at",
+              "ty": "BigInt"
+            },
+            {
+              "name": "legal_documents",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "filename",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "base64_data",
+                      "ty": "String"
+                    }
+                  ],
+                  "name": "LegalDocument"
+                }
+              }
+            },
+            {
+              "name": "manager_company_name",
+              "ty": "String"
+            },
+            {
+              "name": "manager_phone_number",
+              "ty": "String"
+            },
+            {
+              "name": "manager_email",
+              "ty": "String"
+            },
+            {
+              "name": "strategy_description",
+              "ty": "String"
+            },
+            {
+              "name": "performance_reports",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "fund_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "message",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 41040,
+          "description": "Update the specified fund's liquidity (f64).",
+          "json_schema": null,
+          "name": "FundManagerUpdateLiquidity",
+          "parameters": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "new_liquidity",
+              "ty": "Numeric"
+            }
+          ],
+          "returns": [],
+          "stream_response": null
+        },
+        {
+          "code": 42010,
+          "description": "List funds with pending status (admin role).",
+          "json_schema": null,
+          "name": "AdminListPendingFunds",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "data",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "fund_name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "fund_start_date",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "fund_target_apy",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "fund_address",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "company_name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "email_address",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "phone_number",
+                      "ty": "String"
+                    }
+                  ],
+                  "name": "PendingFund"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 42020,
+          "description": "List all users, including name, email, and role (admin role).",
+          "json_schema": null,
+          "name": "AdminListUsers",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "data",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "user_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "email",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "role",
+                      "ty": "String"
+                    }
+                  ],
+                  "name": "UserModel"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 42030,
+          "description": "Approve or reject a specified fund (admin role).",
+          "json_schema": null,
+          "name": "AdminApproveRejectFund",
+          "parameters": [
+            {
+              "name": "comment",
+              "ty": "String"
+            },
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "new_status",
+              "ty": {
+                "EnumRef": "fund_status"
+              }
+            }
+          ],
+          "returns": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "new_status",
+              "ty": {
+                "EnumRef": "fund_status"
+              }
+            },
+            {
+              "name": "comment",
+              "ty": "String"
+            },
+            {
+              "name": "legal_documents",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "filename",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "base64_data",
+                      "ty": "String"
+                    }
+                  ],
+                  "name": "LegalDocument"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 42040,
+          "description": "Approves or rejects a liquidity update request for a given fund (admin role).",
+          "json_schema": null,
+          "name": "AdminApproveLiquidityUpdate",
+          "parameters": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "approve",
+              "ty": "Boolean"
+            }
+          ],
+          "returns": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "old_liquidity",
+              "ty": "Numeric"
+            },
+            {
+              "name": "new_liquidity",
+              "ty": "Numeric"
+            },
+            {
+              "name": "approved",
+              "ty": "Boolean"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43000,
+          "description": "Returns a list of funds that have a non-None pending_liquidity (admin role).",
+          "json_schema": null,
+          "name": "AdminListFundsWithPendingLiquidity",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "data",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "fund_name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "pending_liquidity",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "fund_address",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "target_apy",
+                      "ty": "Numeric"
+                    }
+                  ],
+                  "name": "FundWithPendingLiquidity"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43010,
+          "description": "Capture leads from the landing page.",
+          "json_schema": null,
+          "name": "CaptureLead",
+          "parameters": [
+            {
+              "name": "country",
+              "ty": "String"
+            },
+            {
+              "name": "email",
+              "ty": "String"
+            },
+            {
+              "name": "message",
+              "ty": "String"
+            },
+            {
+              "name": "name",
+              "ty": "String"
+            },
+            {
+              "name": "phone",
+              "ty": "String"
+            },
+            {
+              "name": "services_of_interest",
+              "ty": {
+                "EnumRef": "services_of_interest"
+              }
+            }
+          ],
+          "returns": [
+            {
+              "name": "lead_id",
+              "ty": "BigInt"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43020,
+          "description": "Admin can view the list of captured leads with all fields (admin role).",
+          "json_schema": null,
+          "name": "AdminGetLeads",
+          "parameters": [],
+          "returns": [
+            {
+              "name": "data",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "lead_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "name",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "email",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "phone",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "country",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "services_of_interest",
+                      "ty": {
+                        "EnumRef": "services_of_interest"
+                      }
+                    },
+                    {
+                      "name": "message",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "created_at",
+                      "ty": "BigInt"
+                    }
+                  ],
+                  "name": "LeadModel"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43030,
+          "description": "Connect a new wallet for a user",
+          "json_schema": null,
+          "name": "UserConnectWallet",
+          "parameters": [
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "wallet_address",
+              "ty": "String"
+            },
+            {
+              "name": "wallet_type",
+              "ty": {
+                "EnumRef": "wallet_type"
+              }
+            }
+          ],
+          "returns": [
+            {
+              "name": "wallet_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "message",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43040,
+          "description": "Returns list of user's wallets",
+          "json_schema": null,
+          "name": "UserWallet",
+          "parameters": [
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            }
+          ],
+          "returns": [
+            {
+              "name": "wallets",
+              "ty": {
+                "DataTable": {
+                  "fields": [
+                    {
+                      "name": "wallet_id",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "wallet_address",
+                      "ty": "String"
+                    },
+                    {
+                      "name": "wallet_type",
+                      "ty": {
+                        "EnumRef": "wallet_type"
+                      }
+                    },
+                    {
+                      "name": "balance",
+                      "ty": "Numeric"
+                    },
+                    {
+                      "name": "status",
+                      "ty": {
+                        "EnumRef": "wallet_status"
+                      }
+                    },
+                    {
+                      "name": "created_at",
+                      "ty": "BigInt"
+                    },
+                    {
+                      "name": "updated_at",
+                      "ty": "BigInt"
+                    }
+                  ],
+                  "name": "UserWalletInfo"
+                }
+              }
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43050,
+          "description": "Manage the asset allocations of a fund.",
+          "json_schema": null,
+          "name": "FundManagerManageAllocations",
+          "parameters": [
+            {
+              "name": "allocation_data",
+              "ty": "String"
+            },
+            {
+              "name": "fund_name",
+              "ty": "String"
+            }
+          ],
+          "returns": [
+            {
+              "name": "message",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43060,
+          "description": "Adjust the fund strategy.",
+          "json_schema": null,
+          "name": "FundManagerAdjustStrategy",
+          "parameters": [
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "new_strategy",
+              "ty": {
+                "EnumRef": "fund_strategy"
+              }
+            }
+          ],
+          "returns": [
+            {
+              "name": "new_strategy",
+              "ty": {
+                "EnumRef": "fund_strategy"
+              }
+            },
+            {
+              "name": "fund_name",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43070,
+          "description": "Generates a fund performance report.",
+          "json_schema": null,
+          "name": "FundManagerPerformanceReport",
+          "parameters": [
+            {
+              "name": "from_timestamp",
+              "ty": "BigInt"
+            },
+            {
+              "name": "fund_name",
+              "ty": "String"
+            },
+            {
+              "name": "to_timestamp",
+              "ty": "BigInt"
+            }
+          ],
+          "returns": [
+            {
+              "name": "report_url",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43080,
+          "description": "Retrieves yield data for a user.",
+          "json_schema": null,
+          "name": "UserGetYieldData",
+          "parameters": [
+            {
+              "name": "from_timestamp",
+              "ty": "BigInt"
+            },
+            {
+              "name": "to_timestamp",
+              "ty": "BigInt"
+            },
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            }
+          ],
+          "returns": [
+            {
+              "name": "total_yield",
+              "ty": "Numeric"
+            },
+            {
+              "name": "daily_yield",
+              "ty": "Numeric"
+            },
+            {
+              "name": "annual_yield",
+              "ty": "Numeric"
+            }
+          ],
+          "stream_response": null
+        },
+        {
+          "code": 43090,
+          "description": "Add yield data for a user.",
+          "json_schema": null,
+          "name": "AddYieldData",
+          "parameters": [
+            {
+              "name": "cagr",
+              "ty": "Numeric"
+            },
+            {
+              "name": "user_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "wallet_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "yield_amount",
+              "ty": "Numeric"
+            },
+            {
+              "name": "yield_date",
+              "ty": "BigInt"
+            }
+          ],
+          "returns": [
+            {
+              "name": "yield_id",
+              "ty": "BigInt"
+            },
+            {
+              "name": "message",
+              "ty": "String"
+            }
+          ],
+          "stream_response": null
+        }
+      ],
+      "id": 2,
+      "name": "user"
+    }
+  ]
+}

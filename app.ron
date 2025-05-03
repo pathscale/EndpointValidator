@@ -1,0 +1,422 @@
+#![enable(unwrap_newtypes)]
+#![enable(unwrap_variant_newtypes)]
+Config(
+    definition: EndpointSchemaList(
+        "user",
+        2,
+        [
+            EndpointSchema(
+                name: "UserPing",
+                code: 40000,
+                parameters: [],
+                returns: [
+                    Field(name: "pong", ty: String),
+                ],
+                stream_response: None,
+                description: "A simple health check: receives 'ping' and returns 'pong'.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "UserGetTopFunds",
+                code: 41000,
+                parameters: [],
+                returns: [
+                    Field(
+                        name: "data",
+                        ty: DataTable(
+                            name: "TopFund",
+                            fields: [
+                                Field(name: "fund_name", ty: String),
+                                Field(name: "fund_liquidity", ty: Numeric),
+                                Field(name: "fund_target_apy", ty: Numeric),
+                                Field(name: "fund_address", ty: String),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "Fetch the top 3 funds by liquidity or other ranking metric.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "UserGetFundDetails",
+                code: 41010,
+                parameters: [
+                    Field(
+                        name: "fund_name",
+                        ty: String,
+                    ),
+                ],
+                returns: [
+                    Field(name: "fund_name", ty: String),
+                    Field(name: "fund_liquidity", ty: Numeric),
+                    Field(name: "fund_target_apy", ty: Numeric),
+                    Field(name: "fund_address", ty: String),
+                    Field(name: "fund_start_date", ty: BigInt),
+                    Field(name: "description",     ty: String),
+                ],
+                stream_response: None,
+                description: "Return details for the specified fund.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "UserListFunds",
+                code: 41020,
+                parameters: [],
+                returns: [
+                    Field(
+                        name: "data",
+                        ty: DataTable(
+                            name: "Fund",
+                            fields: [
+                                Field(name: "fund_name", ty: String),
+                                Field(name: "fund_start_date", ty: BigInt),
+                                Field(name: "fund_target_apy", ty: Numeric),
+                                Field(name: "fund_address", ty: String),
+                                Field(name: "company_name", ty: String),
+                                Field(name: "email_address", ty: String),
+                                Field(name: "phone_number", ty: String),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "List all active funds.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "FundManagerSignup",
+                code: 41030,
+                parameters: [
+                    Field(name: "allocation_data",        ty: String),
+                    Field(name: "aum",                    ty: Numeric),
+                    Field(name: "company_name",           ty: String),
+                    Field(name: "country",                ty: String),
+                    Field(name: "description",            ty: String),
+                    Field(name: "fund_address",           ty: String),
+                    Field(name: "fund_name",              ty: String),
+                    Field(name: "fund_start_date",        ty: BigInt),
+                    Field(name: "fund_strategy",          ty: EnumRef("fund_strategy")),
+                    Field(name: "fund_target_apy",        ty: Numeric),
+                    Field(name: "last_updated_at",        ty: BigInt),
+                    Field(
+                        name: "legal_documents",
+                        ty: Vec(
+                            Struct(
+                                name: "LegalDocument",
+                                fields: [
+                                    Field(name: "filename", ty: String),
+                                    Field(name: "base64_data", ty: String),
+                                ],
+                            )    
+                        )
+                    ),
+                    Field(name: "manager_company_name",   ty: String),
+                    Field(name: "manager_phone_number",   ty: String),
+                    Field(name: "manager_email",          ty: String),
+                    Field(name: "strategy_description",   ty: String), 
+                    Field(name: "performance_reports",    ty: String),
+                ],
+                returns: [
+                    Field(name: "fund_id", ty: BigInt),
+                    Field(name: "message", ty: String),
+                ],
+                stream_response: None,
+                description: "Allow a user to register a new fund.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "FundManagerUpdateLiquidity",
+                code: 41040,
+                parameters: [
+                    Field(name: "fund_name", ty: String),
+                    Field(name: "new_liquidity", ty: Numeric),
+                ],
+                returns: [],
+                stream_response: None,
+                description: "Update the specified fund's liquidity (f64).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "AdminListPendingFunds",
+                code: 42010,
+                parameters: [],
+                returns: [
+                    Field(
+                        name: "data",
+                        ty: DataTable(
+                            name: "PendingFund",
+                            fields: [
+                                Field(name: "fund_name", ty: String),
+                                Field(name: "fund_start_date", ty: BigInt),
+                                Field(name: "fund_target_apy", ty: Numeric),
+                                Field(name: "fund_address", ty: String),
+                                Field(name: "company_name", ty: String),
+                                Field(name: "email_address", ty: String),
+                                Field(name: "phone_number", ty: String),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "List funds with pending status (admin role).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "AdminListUsers",
+                code: 42020,
+                parameters: [],
+                returns: [
+                    Field(
+                        name: "data",
+                        ty: DataTable(
+                            name: "UserModel",
+                            fields: [
+                                Field(name: "user_id", ty: BigInt),
+                                Field(name: "name", ty: String),
+                                Field(name: "email", ty: String),
+                                Field(name: "role", ty: String),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "List all users, including name, email, and role (admin role).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "AdminApproveRejectFund",
+                code: 42030,
+                parameters: [
+                    Field(name: "comment",    ty: String),
+                    Field(name: "fund_name",  ty: String),
+                    Field(name: "new_status", ty: EnumRef("fund_status")),
+                ],
+                returns: [
+                    Field(name: "fund_name", ty: String),
+                    Field(name: "new_status", ty: EnumRef("fund_status")),
+                    Field(name: "comment", ty: String),
+                    Field(
+                        name: "legal_documents",
+                        ty: DataTable(
+                            name: "LegalDocument",
+                            fields: [
+                                Field(name: "filename",    ty: String),
+                                Field(name: "base64_data", ty: String),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "Approve or reject a specified fund (admin role).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "AdminApproveLiquidityUpdate",
+                code: 42040,
+                parameters: [
+                    Field(name: "fund_name", ty: String),
+                    Field(name: "approve", ty: Boolean),
+                ],
+                returns: [
+                    Field(name: "fund_name", ty: String),
+                    Field(name: "old_liquidity", ty: Numeric),
+                    Field(name: "new_liquidity", ty: Numeric),
+                    Field(name: "approved", ty: Boolean),
+                ],
+                stream_response: None,
+                description: "Approves or rejects a liquidity update request for a given fund (admin role).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "AdminListFundsWithPendingLiquidity",
+                code: 43000,                      
+                parameters: [],                  
+                returns: [
+                    Field(
+                        name: "data",
+                        ty: DataTable(
+                            name: "FundWithPendingLiquidity",
+                            fields: [
+                                Field(name: "fund_name", ty: String),
+                                Field(name: "pending_liquidity", ty: Numeric),
+                                Field(name: "fund_address", ty: String),
+                                Field(name: "target_apy", ty: Numeric),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "Returns a list of funds that have a non-None pending_liquidity (admin role).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "CaptureLead",
+                code: 43010,
+                parameters: [
+                    Field(name: "country",              ty: String),
+                    Field(name: "email",                ty: String),
+                    Field(name: "message",              ty: String),
+                    Field(name: "name",                 ty: String),
+                    Field(name: "phone",                ty: String),
+                    Field(name: "services_of_interest", ty: EnumRef("services_of_interest")),
+                ],
+                returns: [
+                    Field(name: "lead_id",  ty: BigInt),
+                ],
+                stream_response: None,
+                description: "Capture leads from the landing page.",
+                json_schema: (),
+            ),
+
+            EndpointSchema(
+                name: "AdminGetLeads",
+                code: 43020,
+                parameters: [],  
+                returns: [
+                    Field(
+                        name: "data",
+                        ty: DataTable(
+                            name: "LeadModel",
+                            fields: [
+                                Field(name: "lead_id",               ty: BigInt),
+                                Field(name: "name",                  ty: String),
+                                Field(name: "email",                 ty: String),
+                                Field(name: "phone",                 ty: String),
+                                Field(name: "country",               ty: String),
+                                Field(name: "services_of_interest",  ty: EnumRef("services_of_interest")),
+                                Field(name: "message",               ty: String),
+                                Field(name: "created_at",            ty: BigInt),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "Admin can view the list of captured leads with all fields (admin role).",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "UserConnectWallet",
+                code: 43030,
+                parameters: [
+                    Field(name: "user_id",        ty: BigInt),
+                    Field(name: "wallet_address", ty: String),
+                    Field(name: "wallet_type",    ty: EnumRef("wallet_type")),
+                ],
+                returns: [
+                    Field(name: "wallet_id", ty: BigInt),
+                    Field(name: "message",   ty: String),
+                ],
+                stream_response: None,
+                description: "Connect a new wallet for a user",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "UserWallet",                
+                code: 43040,                  
+                parameters: [
+                    Field(name: "user_id", ty: BigInt),
+                ],
+                returns: [
+                    Field(
+                        name: "wallets",
+                        ty: DataTable(
+                            name: "UserWalletInfo",
+                            fields: [
+                                Field(name: "wallet_id",      ty: BigInt),
+                                Field(name: "wallet_address", ty: String),
+                                Field(name: "wallet_type",    ty: EnumRef("wallet_type")),
+                                Field(name: "balance",        ty: Numeric),
+                                Field(name: "status",         ty: EnumRef("wallet_status")),
+                                Field(name: "created_at",     ty: BigInt),
+                                Field(name: "updated_at",     ty: BigInt),
+                            ],
+                        ),
+                    ),
+                ],
+                stream_response: None,
+                description: "Returns list of user's wallets",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "FundManagerManageAllocations",
+                code: 43050,
+                parameters: [
+                    Field(name: "allocation_data", ty: String),
+                    Field(name: "fund_name",       ty: String),
+                ],
+                returns: [
+                    Field(name: "message", ty: String),
+                ],
+                stream_response: None,
+                description: "Manage the asset allocations of a fund.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "FundManagerAdjustStrategy",
+                code: 43060,
+                parameters: [
+                    Field(name: "fund_name",     ty: String),
+                    Field(name: "new_strategy",  ty: EnumRef("fund_strategy")), 
+                ],
+                returns: [
+                    Field(name: "new_strategy",  ty: EnumRef("fund_strategy")),
+                    Field(name: "fund_name",     ty: String),
+                ],
+                stream_response: None,
+                description: "Adjust the fund strategy.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "FundManagerPerformanceReport",
+                code: 43070,
+                parameters: [
+                    Field(name: "from_timestamp", ty: BigInt),
+                    Field(name: "fund_name",      ty: String),
+                    Field(name: "to_timestamp",   ty: BigInt),
+                ],
+                returns: [
+                    Field(name: "report_url",     ty: String),
+                ],
+                stream_response: None,
+                description: "Generates a fund performance report.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "UserGetYieldData",
+                code: 43080,
+                parameters: [
+                    Field(name: "from_timestamp", ty: BigInt),
+                    Field(name: "to_timestamp",   ty: BigInt),
+                    Field(name: "user_id",        ty: BigInt),
+                ],
+                returns: [
+                    Field(name: "total_yield",   ty: Numeric),
+                    Field(name: "daily_yield",   ty: Numeric),
+                    Field(name: "annual_yield",  ty: Numeric),
+                ],
+                stream_response: None,
+                description: "Retrieves yield data for a user.",
+                json_schema: (),
+            ),
+            EndpointSchema(
+                name: "AddYieldData",
+                code: 43090,
+                parameters: [
+                    Field(name: "cagr", ty: Numeric),
+                    Field(name: "user_id", ty: BigInt),
+                    Field(name: "wallet_id", ty: BigInt),
+                    Field(name: "yield_amount", ty: Numeric),
+                    Field(name: "yield_date", ty: BigInt),
+                ],
+                returns: [
+                    Field(name: "yield_id", ty: BigInt),
+                    Field(name: "message", ty: String),
+                ],
+                stream_response: None,
+                description: "Add yield data for a user.",
+                json_schema: (),
+            )
+        ],
+    ),
+)
