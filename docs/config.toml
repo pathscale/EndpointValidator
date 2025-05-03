@@ -1,5 +1,33 @@
-[10030]
-name = "Authorize"
-params.username = "user0"
-params.token = "550e8400-e29b-41d4-a716-446655440000"
-params.service = 1
+[20001]
+name = "SuperuserLogin"
+params.email = "superuser@email.com"
+params.password = "pass"
+
+[20002]
+name = "SuperuserSignup"
+params.email = "user1@email.com"
+params.password = "pass"
+    
+[20003]
+name = "SuperuserForgotPassword"
+params.email = "user1@email.com"
+
+[20004]
+name = "SuperuserResetPassword"
+params.resetToken = "resetToken"
+params.newPassword = "newPass"
+
+[20005]
+name = "SuperuserLogout"
+params.superuserAccessToken = "superuserAccessToken"
+
+[20100]
+name = "SuperuserListDevs"
+
+[20102]
+name = "SuperuserListDevsInOrganization"
+params.organizationPublicId = "asdiofjm"
+
+[20103]
+name = "SuperuserListOrganizations"
+
