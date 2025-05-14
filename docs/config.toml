@@ -1,25 +1,152 @@
-[20001]
-name = "SuperuserLogin"
+[20000]
+name = "Login"
 params.email = "superuser@email.com"
 params.password = "pass"
 
+[20001]
+name = "Authorize"
+params.email = "superuser@email.com"
+params.accessToken = "superuserAccessToken"
+
 [20002]
-name = "SuperuserSignup"
+name = "Signup"
 params.email = "user1@email.com"
 params.password = "pass"
-    
+
 [20003]
-name = "SuperuserForgotPassword"
+name = "ForgotPassword"
 params.email = "user1@email.com"
 
 [20004]
-name = "SuperuserResetPassword"
+name = "ResetPassword"
 params.resetToken = "resetToken"
 params.newPassword = "newPass"
 
 [20005]
-name = "SuperuserLogout"
-params.superuserAccessToken = "superuserAccessToken"
+name = "Logout"
+params.accessToken = "superuserAccessToken"
+
+[21100]
+name = "ListAppsInOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21101]
+name = "ListAppsInOrgByStatus"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.status = "Enabled"
+
+[21102]
+name = "CreateApp"
+params.description = "App Description"
+params.name = "New App"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21103]
+name = "EditApp"
+params.appPublicId = "33ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.newName = "Updated App Name"
+params.newDescription = "Updated Description"
+params.newStatus = "Enabled"
+
+[21104]
+name = "DeleteApp"
+params.appPublicId = "33ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21105]
+name = "RegenerateClientSecret"
+params.appPublicId = "33ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21300]
+name = "ListOrgs"
+
+[21301]
+name = "CreateOrg"
+params.orgName = "New Organization"
+
+[21302]
+name = "InviteToOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.email = "invitee@email.com"
+
+[21303]
+name = "ListUsersInOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21304]
+name = "LeaveOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21305]
+name = "KickUserFromOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.userPublicId = "11ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21306]
+name = "AssignRoleToUserInOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.userPublicId = "user-uuid"
+params.rolePublicId = "role-uuid"
+
+[21307]
+name = "RevokeRoleFromUserInOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.userPublicId = "user-uuid"
+params.rolePublicId = "role-uuid"
+
+[21308]
+name = "EditOrgSecurityRules"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.newMinPasswordLength = 8
+params.newAllowedPasswordChars = "abc123"
+
+[21309]
+name = "GetOrgSecurityRules"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21200]
+name = "ListAppUsersInOrg"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21201]
+name = "GetAppUser"
+params.appUserPublicId = "app-user-uuid"
+
+[21202]
+name = "EditAppUser"
+params.appUserPublicId = "app-user-uuid"
+params.newRolePublicIds = ["role-uuid"]
+params.newStatus = "enabled"
+
+[21203]
+name = "DeleteAppUser"
+params.appUserPublicId = "app-user-uuid"
+
+[21204]
+name = "CreateAppUser"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.email = "newuser@email.com"
+params.password = "newpassword"
+params.roles = ["role-uuid"]
+params.agreedTos = "true"
+params.agreedPrivacy = "true"
+
+[21205]
+name = "DeleteRole"
+params.rolePublicId = "role-uuid"
+
+[21206]
+name = "CreateRole"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+params.roleName = "New Role"
+params.roleDescription = "Role Description"
+
+[21207]
+name = "ListRoles"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
+
+[21400]
+name = "GetMetricsTotal"
+params.orgPublicId = "22ceef42-222f-4cd1-b11c-6c88a40ba74e"
 
 [20100]
 name = "SuperuserListDevs"

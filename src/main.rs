@@ -1,10 +1,10 @@
 mod cli;
+mod parser;
 mod tui;
 mod ws;
-mod parser;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {    
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command-line arguments
     let cli = cli::parse_args();
 

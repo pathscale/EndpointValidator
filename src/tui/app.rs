@@ -1,19 +1,25 @@
-use crate::tui::state::{AppState, JsonViewMode, EndpointField};
+use crate::parser::EndpointMetadata;
+use crate::tui::state::{AppState, EndpointField, JsonViewMode};
 use crate::tui::ui::draw_ui;
-use crate::parser::{EndpointMetadata};
+use anyhow::{Context, Result};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
-use std::io;
-use anyhow::{Result, Context};
 use std::collections::HashMap;
+use std::io;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{self, Duration};
 
-pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>, param_defaults: Vec<(String, Vec<(String, String)>)>) -> Result<()> {
+pub async fn run(
+    endpoint_names: Vec<String>,
+    endpoint_data: HashMap<String, EndpointMetadata>,
+    param_defaults: HashMap<String, HashMap<String, String>>,
+) -> Result<()> {
     // Set up terminal in raw mode
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -22,7 +28,11 @@ pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, End
     let terminal = Arc::new(Mutex::new(Terminal::new(backend)?));
 
     // Initialize app state with shared state
-    let app_state = Arc::new(Mutex::new(AppState::new(endpoint_names, endpoint_data, param_defaults)));
+    let app_state = Arc::new(Mutex::new(AppState::new(
+        endpoint_names,
+        endpoint_data,
+        param_defaults,
+    )));
 
     // Spawn a task to handle TUI updates
     let terminal_clone = Arc::clone(&terminal);
@@ -30,12 +40,12 @@ pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, End
     tokio::spawn(async move {
         let mut ticker = time::interval(Duration::from_millis(500));
         loop {
-            ticker.tick().await;  // Wait for the next tick
+            ticker.tick().await; // Wait for the next tick
             let mut app_state_guard = app_state_clone.lock().await;
             let mut terminal_guard = terminal_clone.lock().await;
             if let Err(e) = terminal_guard.draw(|f| draw_ui(f, &mut *app_state_guard)) {
                 eprintln!("Error drawing UI: {}", e);
-                break;  // Exit the loop if drawing fails
+                break; // Exit the loop if drawing fails
             }
         }
     });
@@ -69,7 +79,10 @@ pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, End
     Ok(())
 }
 
-async fn handle_event(app_state: &Arc<Mutex<AppState>>, terminal: &Arc<Mutex<Terminal<CrosstermBackend<std::io::Stdout>>>>) -> Result<()> {
+async fn handle_event(
+    app_state: &Arc<Mutex<AppState>>,
+    terminal: &Arc<Mutex<Terminal<CrosstermBackend<std::io::Stdout>>>>,
+) -> Result<()> {
     // Poll for events with a short timeout
     if event::poll(Duration::from_millis(100))? {
         if let Event::Key(key) = event::read()? {
@@ -160,13 +173,20 @@ async fn connect_and_listen(app_state: Arc<Mutex<AppState>>) -> Result<()> {
             let state = app_state.lock().await;
 
             // Extract necessary data while holding the lock
-            let method_id = state.method_id.ok_or_else(|| anyhow::anyhow!("Method ID is missing"))?;
+            let method_id = state
+                .method_id
+                .ok_or_else(|| anyhow::anyhow!("Method ID is missing"))?;
             let is_stream = state.is_stream;
 
-            let converted_params = state.params.iter().zip(state.param_values.iter())
+            let converted_params = state
+                .params
+                .iter()
+                .zip(state.param_values.iter())
                 .map(|(param, value)| {
-                    param.ty.convert_value(value)
-                        .context(format!("Failed to convert value for parameter: {}", param.name))
+                    param.ty.convert_value(value).context(format!(
+                        "Failed to convert value for parameter: {}",
+                        param.name
+                    ))
                 })
                 .collect::<Result<Vec<_>>>()?;
 
@@ -176,16 +196,25 @@ async fn connect_and_listen(app_state: Arc<Mutex<AppState>>) -> Result<()> {
         {
             // Send the request to the WebSocket
             let mut state = app_state.lock().await;
-            let client = state.client.as_mut().context("WebSocket client is not connected")?;
-            client.send_req(method_id, converted_params).await.context("Failed to send request to WebSocket")?;
+            let client = state
+                .client
+                .as_mut()
+                .context("WebSocket client is not connected")?;
+            client
+                .send_req(method_id, converted_params)
+                .await
+                .context("Failed to send request to WebSocket")?;
         }
 
         // Enter the receiving loop
         loop {
             let raw_response_result = {
                 let mut state = app_state.lock().await;
-                let client = state.client.as_mut().context("WebSocket client is not connected")?;
-                
+                let client = state
+                    .client
+                    .as_mut()
+                    .context("WebSocket client is not connected")?;
+
                 client.recv_raw().await
             };
 
@@ -194,8 +223,10 @@ async fn connect_and_listen(app_state: Arc<Mutex<AppState>>) -> Result<()> {
                     let resp = {
                         let state = app_state.lock().await;
                         match state.json_view_mode {
-                            JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty"),
-                            JsonViewMode::Raw => serde_json::to_string(&raw_response).context("Failed to format JSON as raw"),
+                            JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response)
+                                .context("Failed to format JSON as pretty"),
+                            JsonViewMode::Raw => serde_json::to_string(&raw_response)
+                                .context("Failed to format JSON as raw"),
                         }
                     };
 

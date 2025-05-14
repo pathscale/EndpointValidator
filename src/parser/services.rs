@@ -1,7 +1,9 @@
-use crate::parser::{Services, EndpointMetadata, ParameterMetadata, Type, ParamValue, EndpointData};
+use crate::parser::{
+    EndpointData, EndpointMetadata, ParamValue, ParameterMetadata, Services, Type,
+};
+use anyhow::{anyhow, Result};
+use serde_json::{json, Number, Value};
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
-use serde_json::{Value, Number, json};
 
 impl Services {
     pub fn extract_endpoints(&self) -> (Vec<String>, HashMap<String, EndpointMetadata>) {
@@ -52,7 +54,9 @@ impl Type {
             }
             Type::Numeric => {
                 let parsed_value: f64 = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Number(Number::from_f64(parsed_value).ok_or_else(|| anyhow!("Invalid number"))?))
+                Ok(Value::Number(
+                    Number::from_f64(parsed_value).ok_or_else(|| anyhow!("Invalid number"))?,
+                ))
             }
             Type::Boolean => {
                 let parsed_value: bool = value.parse().map_err(anyhow::Error::msg)?;
@@ -78,11 +82,13 @@ impl Type {
             }
             Type::Vec(inner_type) => {
                 let values: Vec<&str> = value.split(',').collect(); // Assuming comma-separated values
-                let converted_values: Result<Vec<Value>, anyhow::Error> = values.iter().map(|v| inner_type.convert_value(v)).collect();
+                let converted_values: Result<Vec<Value>, anyhow::Error> =
+                    values.iter().map(|v| inner_type.convert_value(v)).collect();
                 Ok(Value::Array(converted_values?))
             }
             Type::Struct { fields, .. } => {
-                let values: HashMap<&str, &str> = value.split(',')
+                let values: HashMap<&str, &str> = value
+                    .split(',')
                     .map(|pair| {
                         let mut iter = pair.splitn(2, ':');
                         (iter.next().unwrap(), iter.next().unwrap_or(""))
@@ -99,22 +105,26 @@ impl Type {
             }
             Type::DataTable { fields, .. } => {
                 let rows: Vec<&str> = value.split(';').collect(); // Assuming rows are separated by semicolons
-                let converted_rows: Result<Vec<Value>, anyhow::Error> = rows.iter().map(|row| {
-                    let values: HashMap<&str, &str> = row.split(',')
-                        .map(|pair| {
-                            let mut iter = pair.splitn(2, ':');
-                            (iter.next().unwrap(), iter.next().unwrap_or(""))
-                        })
-                        .collect();
+                let converted_rows: Result<Vec<Value>, anyhow::Error> = rows
+                    .iter()
+                    .map(|row| {
+                        let values: HashMap<&str, &str> = row
+                            .split(',')
+                            .map(|pair| {
+                                let mut iter = pair.splitn(2, ':');
+                                (iter.next().unwrap(), iter.next().unwrap_or(""))
+                            })
+                            .collect();
 
-                    let mut map = serde_json::Map::new();
-                    for field in fields {
-                        if let Some(val) = values.get(field.name.as_str()) {
-                            map.insert(field.name.clone(), field.ty.convert_value(val)?);
+                        let mut map = serde_json::Map::new();
+                        for field in fields {
+                            if let Some(val) = values.get(field.name.as_str()) {
+                                map.insert(field.name.clone(), field.ty.convert_value(val)?);
+                            }
                         }
-                    }
-                    Ok(Value::Object(map))
-                }).collect();
+                        Ok(Value::Object(map))
+                    })
+                    .collect();
 
                 Ok(Value::Array(converted_rows?))
             }
@@ -134,18 +144,18 @@ impl Type {
                 Ok(Value::String(value.to_string()))
             }
             Type::Object => Ok(json!(value)), // Assuming object as a string or raw JSON
-            Type::Unit => Ok(Value::Null), // Unit type maps to Null in JSON
+            Type::Unit => Ok(Value::Null),    // Unit type maps to Null in JSON
         }
     }
 }
 
 pub fn extract_param_defaults(
     endpoints: &HashMap<String, EndpointData>,
-) -> Vec<(String, Vec<(String, String)>)> {
-    let mut result = Vec::new();
+) -> HashMap<String, HashMap<String, String>> {
+    let mut result = HashMap::new();
 
     for (method_id, endpoint_data) in endpoints {
-        let mut param_vec = Vec::new();
+        let mut param_map = HashMap::new();
         for (param_name, param_value) in &endpoint_data.params {
             let value_str = match param_value {
                 ParamValue::String(s) => s.clone(),
@@ -154,9 +164,9 @@ pub fn extract_param_defaults(
                 ParamValue::Array(arr) => format!("{:?}", arr),
                 ParamValue::Object(obj) => format!("{:?}", obj),
             };
-            param_vec.push((param_name.clone(), value_str));
+            param_map.insert(param_name.to_string(), value_str);
         }
-        result.push((method_id.clone(), param_vec));
+        result.insert(method_id.to_string(), param_map);
     }
 
     result
