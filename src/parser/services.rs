@@ -141,11 +141,11 @@ impl Type {
 
 pub fn extract_param_defaults(
     endpoints: &HashMap<String, EndpointData>,
-) -> Vec<(String, Vec<(String, String)>)> {
-    let mut result = Vec::new();
+) -> HashMap<String, HashMap<String, String>> {
+    let mut result = HashMap::new();
 
     for (method_id, endpoint_data) in endpoints {
-        let mut param_vec = Vec::new();
+        let mut param_map = HashMap::new();
         for (param_name, param_value) in &endpoint_data.params {
             let value_str = match param_value {
                 ParamValue::String(s) => s.clone(),
@@ -154,9 +154,9 @@ pub fn extract_param_defaults(
                 ParamValue::Array(arr) => format!("{:?}", arr),
                 ParamValue::Object(obj) => format!("{:?}", obj),
             };
-            param_vec.push((param_name.clone(), value_str));
+            param_map.insert(param_name.to_string(), value_str);
         }
-        result.push((method_id.clone(), param_vec));
+        result.insert(method_id.to_string(), param_map);
     }
 
     result

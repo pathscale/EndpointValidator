@@ -13,7 +13,11 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{self, Duration};
 
-pub async fn run(endpoint_names: Vec<String>, endpoint_data: HashMap<String, EndpointMetadata>, param_defaults: Vec<(String, Vec<(String, String)>)>) -> Result<()> {
+pub async fn run(
+    endpoint_names: Vec<String>,
+    endpoint_data: HashMap<String, EndpointMetadata>,
+    param_defaults: HashMap<String, HashMap<String, String>>,
+) -> Result<()> {
     // Set up terminal in raw mode
     enable_raw_mode()?;
     let mut stdout = io::stdout();
