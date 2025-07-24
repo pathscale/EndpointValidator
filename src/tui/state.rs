@@ -413,6 +413,17 @@ impl AppState {
             .await
             .context("Failed to receive response from WebSocket")?;
 
+        let access_token = raw_response
+            .get("params")
+            .context("Missing params in response")
+            .and_then(|v| {
+                v.get("accessToken")
+                    .and_then(|token| token.as_str())
+                    .context("Missing accessToken in response")
+            })
+            .context("Failed to get access token from response")?;
+        println!("Access token: {}", access_token);
+
         let formatted_response = match self.json_view_mode {
             JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response)
                 .context("Failed to format JSON as pretty")?,
@@ -421,6 +432,15 @@ impl AppState {
             }
         };
 
+        let headers = format!("0authorize, 1{}, 2{}, ", self.username, access_token);
+        let client = WsClient::new(&self.url, &headers)
+            .await
+            .context("Failed to connect to WebSocket")?;
+        self.client = Some(client);
+        let client = self
+            .client
+            .as_mut()
+            .context("WebSocket client is not connected")?;
         let resp = format!("Connected to {}\n{}", self.url, formatted_response);
         self.json_data = Some(resp);
         self.connected = true;

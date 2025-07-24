@@ -1,5 +1,8 @@
 
-run:
-  #cargo run -- --services-path ../trading.insolvent.app-backend/docs/services.json --config-path ./docs/config.toml
+run-honey:
   cargo run -- --services-path ../honey.id-backend/docs/services.json --config-path ./docs/config.toml
+  
 
+run-pays:
+  cargo run -- --services-path ../pays.online-backend/docs/services.json --config-path ./docs/config.toml
+  
