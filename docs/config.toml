@@ -158,3 +158,6 @@ params.organizationPublicId = "asdiofjm"
 [20103]
 name = "SuperuserListOrganizations"
 
+[20400]
+name = "SetTelegramUsername"
+params.userPublicId = "11ceef42-222f-4cd1-b11c-6c88a40ba74e"
