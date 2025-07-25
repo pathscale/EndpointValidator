@@ -75,7 +75,7 @@ The example of the config file for the `Authorize` endpoint from the [auth](docs
 
 Finally, to start the validator, run the following command from the Validator root:
 ```shell
-  cargo run -- --services-path path/to/the/services.json --config-path path/to/the/config.toml
+cargo run -- --services-path path/to/the/services.json --config-path path/to/the/config.toml
 ```
 
 After running this command the validator interface should appear in the terminal.
@@ -94,3 +94,74 @@ The functionality is described at the bottom of the screen, however there are us
 11. Navigate to `connect` button in the middle menu with the `bottom` arrow to execute the request
 12. The response should appear in the right menu
 13. If the response did not appear or updated, try to press enter a couple of times again to repeat the request
+
+#### CLI Mode (Headless)
+
+To run in CLI mode (headless), use the `--headless` flag along with the required endpoint name. There are two ways to use the CLI mode:
+
+1. For the Login endpoint:
+```shell
+cargo run -- \
+  --services-path path/to/the/services.json \
+  --config-path path/to/the/config.toml \
+  --headless \
+  --endpoint "Login" \
+  --method 21002 \
+  --params '{"username": "your_username", "password": "your_password"}' \
+  --auth-username "your_username" \
+  --auth-password "your_password" \
+  [--ws-url "ws://custom-server:port"]
+```
+
+2. For other endpoints (which require authentication):
+```shell
+cargo run -- \
+  --services-path path/to/the/services.json \
+  --config-path path/to/the/config.toml \
+  --headless \
+  --endpoint "EndpointName" \
+  --method METHOD_ID \
+  --params '{"param1": "value1", "param2": true}' \
+  --auth-username "your_username" \
+  --auth-password "your_password" \
+  [--ws-url "ws://custom-server:port"]
+```
+
+CLI Mode Arguments:
+- `--headless`: Enable CLI mode instead of TUI
+- `--endpoint`: (Required) Name of the endpoint to validate
+- `--method`: (Required) Method ID for the endpoint (e.g., 21002 for Login)
+- `--ws-url`: (Optional) Custom WebSocket server URL, defaults to ws://localhost:8080
+- `--params`: (Optional) JSON string of parameters for the endpoint. If not provided, defaults from config.toml will be used
+- `--auth-username`: (Required) Username for WebSocket handshake
+- `--auth-password`: (Required) Password for WebSocket handshake
+
+Examples:
+
+1. Login endpoint:
+```shell
+cargo run -- \
+  --services-path ./services.json \
+  --config-path ./config.toml \
+  --headless \
+  --endpoint "Login" \
+  --method 21002 \
+  --params '{"username": "test@example.com", "password": "password123"}' \
+  --auth-username "test@example.com" \
+  --auth-password "password123" \
+  --ws-url "ws://localhost:8445"
+```
+
+2. Protected endpoint:
+```shell
+cargo run -- \
+  --services-path ./services.json \
+  --config-path ./config.toml \
+  --headless \
+  --endpoint "GetUserProfile" \
+  --method 22001 \
+  --params '{"userId": 123}' \
+  --auth-username "test@example.com" \
+  --auth-password "password123" \
+  --ws-url "ws://localhost:8445"
+```

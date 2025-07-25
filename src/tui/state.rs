@@ -1,5 +1,5 @@
-use crate::ws::WsClient;
 use crate::parser::{EndpointMetadata, ParameterMetadata};
+use crate::ws::WsClient;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 
@@ -150,9 +150,15 @@ impl AppState {
 
     fn delete_last_char_from_settings(&mut self) {
         match self.focused_settings_field {
-            Some(SettingsField::Url) => { self.url.pop(); },
-            Some(SettingsField::Username) => { self.username.pop(); },
-            Some(SettingsField::Password) => { self.password.pop(); },
+            Some(SettingsField::Url) => {
+                self.url.pop();
+            }
+            Some(SettingsField::Username) => {
+                self.username.pop();
+            }
+            Some(SettingsField::Password) => {
+                self.password.pop();
+            }
             _ => {}
         }
     }
@@ -223,12 +229,10 @@ impl AppState {
             }
         }
     }
-    
+
     fn previous_endpoint_field(&self) -> Option<EndpointField> {
         match self.focused_endpoint_field {
-            Some(EndpointField::Param(index)) if index > 0 => {
-                Some(EndpointField::Param(index - 1))
-            }
+            Some(EndpointField::Param(index)) if index > 0 => Some(EndpointField::Param(index - 1)),
             Some(EndpointField::Param(_)) => Some(EndpointField::JsonToggleButton),
             Some(EndpointField::JsonToggleButton) => Some(EndpointField::DisconnectButton),
             Some(EndpointField::DisconnectButton) => Some(EndpointField::ConnectButton),
@@ -240,16 +244,16 @@ impl AppState {
                 }
             }
         }
-    }    
-    
+    }
+
     // Block switching
     pub fn switch_block(&mut self) {
         if self.connected {
             self.current_block = match self.current_block {
                 AppBlock::Settings => {
                     self.update_selected_endpoint_data();
-                    AppBlock::EndpointList 
-                },
+                    AppBlock::EndpointList
+                }
                 AppBlock::EndpointList => {
                     self.update_selected_endpoint_data();
                     AppBlock::EndpointsReq
@@ -284,7 +288,7 @@ impl AppState {
             if let Some(metadata) = self.endpoint_data.get(endpoint) {
                 self.method_id = Some(metadata.method_id);
                 self.service_name = Some(metadata.service_name.clone());
-    
+
                 // Do not sort params by their names
                 self.params = metadata.params.clone();
 
@@ -298,44 +302,49 @@ impl AppState {
                     let default_map: HashMap<_, _> = defaults.clone();
 
                     // Populate param_values with either the default value or an empty string
-                    self.param_values = self.params.iter()
+                    self.param_values = self
+                        .params
+                        .iter()
                         .map(|param| {
-                            default_map.get(&param.name).cloned().unwrap_or_else(|| "".to_string())
+                            default_map
+                                .get(&param.name)
+                                .cloned()
+                                .unwrap_or_else(|| "".to_string())
                         })
                         .collect();
                 } else {
                     // If no defaults are found, initialize with empty strings
                     self.param_values = vec!["".to_string(); self.params.len()];
                 }
-    
+
                 self.is_stream = metadata.is_stream;
             }
         }
     }
-    
-    
-    
+
     pub fn toggle_json_view_mode(&mut self) {
         if let Some(raw_json) = self.json_data.as_ref() {
             self.json_view_mode = match self.json_view_mode {
                 JsonViewMode::Pretty => {
                     let raw_json = serde_json::to_string(
-                        &serde_json::from_str::<serde_json::Value>(raw_json).unwrap_or_default()
-                    ).unwrap_or_else(|_| raw_json.clone());
+                        &serde_json::from_str::<serde_json::Value>(raw_json).unwrap_or_default(),
+                    )
+                    .unwrap_or_else(|_| raw_json.clone());
                     self.json_data = Some(raw_json);
                     JsonViewMode::Raw
-                },
+                }
                 JsonViewMode::Raw => {
                     let pretty_json = serde_json::to_string_pretty(
-                        &serde_json::from_str::<serde_json::Value>(raw_json).unwrap_or_default()
-                    ).unwrap_or_else(|_| raw_json.clone());
+                        &serde_json::from_str::<serde_json::Value>(raw_json).unwrap_or_default(),
+                    )
+                    .unwrap_or_else(|_| raw_json.clone());
                     self.json_data = Some(pretty_json);
                     JsonViewMode::Pretty
-                },
+                }
             };
         }
     }
-    
+
     // Handle connection and disconnection
     pub async fn handle_enter(&mut self) -> Result<()> {
         if self.current_block == AppBlock::Settings {
@@ -377,35 +386,34 @@ impl AppState {
     }
 
     pub async fn handle_connect(&mut self) -> Result<()> {
-        let headers = format!(
-            "0login, 1{}, 2{}, 3User, 424787297130491616, 5android",
-            self.username, self.password
-        );
-        
-        let client = WsClient::new(&self.url, &headers)
+        let client = WsClient::new(&self.url, &self.username, &self.password)
             .await
             .context("Failed to connect to WebSocket")?;
         self.client = Some(client);
-    
-        let client = self.client.as_mut().context("WebSocket client is not connected")?;
-        let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
-        
+
+        let client = self
+            .client
+            .as_mut()
+            .context("WebSocket client is not connected")?;
+        let raw_response = client
+            .recv_raw()
+            .await
+            .context("Failed to receive response from WebSocket")?;
+
         let formatted_response = match self.json_view_mode {
-            JsonViewMode::Pretty => {
-                serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
-            }
+            JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response)
+                .context("Failed to format JSON as pretty")?,
             JsonViewMode::Raw => {
                 serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
             }
         };
-        
-        let resp = format!("Connected to {}\n{}", self.url, formatted_response);        
+
+        let resp = format!("Connected to {}\n{}", self.url, formatted_response);
         self.json_data = Some(resp);
         self.connected = true;
-    
+
         Ok(())
     }
-    
 
     pub async fn handle_disconnect(&mut self) -> Result<()> {
         if let Some(client) = self.client.take() {
@@ -417,31 +425,40 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn handle_endpoint_connect(&mut self) -> Result<()> { 
-        let client = self.client.as_mut().context("WebSocket client is not connected")?;
+    pub async fn handle_endpoint_connect(&mut self) -> Result<()> {
+        let client = self
+            .client
+            .as_mut()
+            .context("WebSocket client is not connected")?;
 
         let mut converted_params = Vec::new();
         for (param, value) in self.params.iter().zip(self.param_values.iter()) {
-            let converted_value = param.ty
-                .convert_value(value)
-                .context(format!("Failed to convert value for parameter: {}", param.name))?;
+            let converted_value = param.ty.convert_value(value).context(format!(
+                "Failed to convert value for parameter: {}",
+                param.name
+            ))?;
             converted_params.push(converted_value);
         }
 
-        client.send_req(self.method_id.unwrap(), converted_params).await.context("Failed to send request to WebSocket")?;
-        let raw_response = client.recv_raw().await.context("Failed to receive response from WebSocket")?;
+        client
+            .send_req(self.method_id.unwrap(), converted_params)
+            .await
+            .context("Failed to send request to WebSocket")?;
+        let raw_response = client
+            .recv_raw()
+            .await
+            .context("Failed to receive response from WebSocket")?;
 
         let resp = match self.json_view_mode {
-            JsonViewMode::Pretty => {
-                serde_json::to_string_pretty(&raw_response).context("Failed to format JSON as pretty")?
-            }
+            JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response)
+                .context("Failed to format JSON as pretty")?,
             JsonViewMode::Raw => {
                 serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
             }
         };
-        
+
         self.endpoint_connected = true;
-        self.json_data = Some(resp); 
+        self.json_data = Some(resp);
         Ok(())
     }
 
@@ -451,4 +468,3 @@ impl AppState {
         Ok(())
     }
 }
-

@@ -122,14 +122,14 @@ pub struct Config {
     pub endpoints: HashMap<String, EndpointData>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct EndpointData {
     pub name: String,
     #[serde(default)]
     pub params: HashMap<String, ParamValue>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum ParamValue {
     String(String),
