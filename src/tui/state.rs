@@ -391,24 +391,7 @@ impl AppState {
             .context("Failed to connect to WebSocket")?;
         self.client = Some(client);
 
-        let client = self
-            .client
-            .as_mut()
-            .context("WebSocket client is not connected")?;
-        let raw_response = client
-            .recv_raw()
-            .await
-            .context("Failed to receive response from WebSocket")?;
-
-        let formatted_response = match self.json_view_mode {
-            JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response)
-                .context("Failed to format JSON as pretty")?,
-            JsonViewMode::Raw => {
-                serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
-            }
-        };
-
-        let resp = format!("Connected to {}\n{}", self.url, formatted_response);
+        let resp = format!("Connected to {}", self.url);
         self.json_data = Some(resp);
         self.connected = true;
 

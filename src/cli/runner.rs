@@ -44,7 +44,8 @@ impl CliRunner {
         let ws_url = self.ws_url.as_deref().unwrap_or("ws://localhost:8080");
         let auth_username = self.auth_username.as_deref().unwrap_or("rust-client");
         let auth_password = self.auth_password.as_deref().unwrap_or("pass");
-        let mut ws_client = WsClient::new(ws_url, auth_username, auth_password).await?;
+        let mut ws_client =
+            WsClient::new_with_debug(ws_url, auth_username, auth_password, true).await?;
 
         let params: HashMap<String, Value> = if let Some(params_str) = &self.params {
             serde_json::from_str(params_str)?
