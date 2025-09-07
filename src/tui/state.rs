@@ -1,6 +1,6 @@
 use crate::parser::{EndpointMetadata, ParameterMetadata};
 use crate::ws::WsClient;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
@@ -395,7 +395,7 @@ impl AppState {
             .await
             .context("Failed to receive response from WebSocket for step 1")?;
 
-        let token = response
+        let Ok(token) = response
             .get("params")
             .context("Missing params in response")
             .and_then(|v| {
@@ -403,7 +403,10 @@ impl AppState {
                     .and_then(|token| token.as_str())
                     .context("Missing accessToken in response")
             })
-            .context("Failed to get access token from response")?;
+        else {
+            let response = self.format_json(&response)?;
+            bail!("Failed to get access token from response\n{response}");
+        };
 
         let _ = client.close().await;
         let mut client = WsClient::new(
@@ -417,13 +420,7 @@ impl AppState {
             .recv_raw()
             .await
             .context("Failed to receive response from WebSocket for step 2")?;
-        let response = match self.json_view_mode {
-            JsonViewMode::Pretty => serde_json::to_string_pretty(&response)
-                .context("Failed to format JSON as pretty")?,
-            JsonViewMode::Raw => {
-                serde_json::to_string(&response).context("Failed to format JSON as raw")?
-            }
-        };
+        let response = self.format_json(&response)?;
 
         self.json_data = Some(format!("Connected to {}\n{}", self.url, response));
         self.client = Some(client);
@@ -466,13 +463,7 @@ impl AppState {
             .await
             .context("Failed to receive response from WebSocket")?;
 
-        let resp = match self.json_view_mode {
-            JsonViewMode::Pretty => serde_json::to_string_pretty(&raw_response)
-                .context("Failed to format JSON as pretty")?,
-            JsonViewMode::Raw => {
-                serde_json::to_string(&raw_response).context("Failed to format JSON as raw")?
-            }
-        };
+        let resp = self.format_json(&raw_response)?;
 
         self.endpoint_connected = true;
         self.json_data = Some(resp);
@@ -483,5 +474,16 @@ impl AppState {
         self.endpoint_connected = false;
         self.json_data = None;
         Ok(())
+    }
+
+    fn format_json(&self, value: &serde_json::Value) -> Result<String> {
+        Ok(match self.json_view_mode {
+            JsonViewMode::Pretty => {
+                serde_json::to_string_pretty(value).context("Failed to format JSON as pretty")?
+            }
+            JsonViewMode::Raw => {
+                serde_json::to_string(value).context("Failed to format JSON as raw")?
+            }
+        })
     }
 }
