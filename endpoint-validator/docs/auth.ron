@@ -1,0 +1,43 @@
+#![enable(unwrap_newtypes)]
+#![enable(unwrap_variant_newtypes)]
+Config (
+    definition: EndpointSchema (
+        "auth",
+        1,
+        EndpointSchema(
+    name: "Authorize",
+    code: 10030,
+    parameters: [
+        Field(
+            name: "username",
+            ty: String,
+        ),
+        Field(
+            name: "token",
+            ty: UUID,
+        ),
+        Field(
+            name: "service",
+            ty: EnumRef("service"),
+        ),
+    ],
+    returns: [
+        Field(
+            name: "success",
+            ty: Boolean,
+        ),
+        Field(
+            name: "user_id",
+            ty: BigInt,
+        ),
+        Field(
+            name: "role",
+            ty: EnumRef("role"),
+        ),
+    ],
+    stream_response: None,
+    description: "",
+    json_schema: (),
+)
+    )
+)
