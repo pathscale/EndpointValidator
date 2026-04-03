@@ -1,1 +1,4 @@
 /target
+ws-load-test/results
+ws-load-test/venv
+*/results.zip
