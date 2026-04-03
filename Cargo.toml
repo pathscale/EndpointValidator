@@ -5,3 +5,10 @@ members = [
 ]
 resolver = "2"
 
+# [patch.crates-io]
+# endpoint-libs = { path = "../endpoint-libs" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+
