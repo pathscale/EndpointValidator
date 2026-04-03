@@ -1,4 +1,15 @@
 /target
-ws-load-test/results
+ws-load-test/results*
 ws-load-test/venv
 */results.zip
+.vscode/settings.json
+
+# We will not be tracking any AI tool related metadata
+/.claude
+/.gemini
+/.qwen
+/.opencode
+/.serena
+/.kiro
+CLAUDE.md
+AGENTS.md
