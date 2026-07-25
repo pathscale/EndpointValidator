@@ -5,11 +5,9 @@ ws-load-test/venv
 .vscode/settings.json
 
 # We will not be tracking any AI tool related metadata
-/.claude
+/.claude/settings.local.json
 /.gemini
 /.qwen
 /.opencode
 /.serena
 /.kiro
-CLAUDE.md
-AGENTS.md
