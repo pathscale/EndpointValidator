@@ -1,10 +1,7 @@
-mod cli;
-mod tui;
-mod ws;
-mod parser;
+use endpoint_validator::{cli, parser, tui};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {    
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command-line arguments
     let cli = cli::parse_args();
 
@@ -19,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let services = parser::load_services(&services_path)?;
     let (endpoint_names, endpoint_data) = services.extract_endpoints();
-  
+
     let config = parser::load_config(&config_path)?;
     let param_defaults = parser::extract_param_defaults(&config.endpoints);
 

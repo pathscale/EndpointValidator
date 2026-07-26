@@ -1,23 +1,27 @@
-use crate::tui::state::{AppState, EndpointField, SettingsField, JsonViewMode, AppBlock};
+use crate::tui::state::{AppBlock, AppState, EndpointField, JsonViewMode, SettingsField};
 use crate::tui::widgets::{
-    create_button,
-    create_input_widget,
-    create_json_viewer,
-    create_list_widget,
-}; 
+    create_button, create_input_widget, create_json_viewer, create_list_widget,
+};
 use ratatui::{
+    Frame,
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
-    Frame,
-    widgets::{Block, Borders, Paragraph},
     style::{Color, Style},
     text::{Span, Spans, Text},
+    widgets::{Block, Borders, Paragraph},
 };
 
 pub fn draw_ui<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(5), Constraint::Min(1), Constraint::Length(2)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(5),
+                Constraint::Min(1),
+                Constraint::Length(2),
+            ]
+            .as_ref(),
+        )
         .split(f.size());
 
     draw_settings_screen(f, app_state, chunks[0]);
@@ -44,12 +48,20 @@ fn draw_settings_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, 
     let is_focused = app_state.current_block == AppBlock::Settings;
     let title = Spans::from(vec![Span::styled(
         " Settings ",
-        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+        Style::default().fg(if is_focused {
+            Color::Yellow
+        } else {
+            Color::Gray
+        }),
     )]);
 
     let settings_block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }))
+        .border_style(Style::default().fg(if is_focused {
+            Color::Yellow
+        } else {
+            Color::Gray
+        }))
         .title(title);
 
     f.render_widget(settings_block, area);
@@ -66,9 +78,21 @@ fn draw_settings_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, 
         .margin(1)
         .split(area);
 
-    let url_input = create_input_widget(" URL ", &app_state.url, app_state.focused_settings_field == Some(SettingsField::Url));
-    let username_input = create_input_widget(" Username ", &app_state.username, app_state.focused_settings_field == Some(SettingsField::Username));
-    let password_input = create_input_widget(" Password ", &app_state.password, app_state.focused_settings_field == Some(SettingsField::Password));
+    let url_input = create_input_widget(
+        " URL ",
+        &app_state.url,
+        app_state.focused_settings_field == Some(SettingsField::Url),
+    );
+    let username_input = create_input_widget(
+        " Username ",
+        &app_state.username,
+        app_state.focused_settings_field == Some(SettingsField::Username),
+    );
+    let password_input = create_input_widget(
+        " Password ",
+        &app_state.password,
+        app_state.focused_settings_field == Some(SettingsField::Password),
+    );
 
     let connect_button = create_button(
         "Connect",
@@ -106,7 +130,11 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
     } else {
         let title = Spans::from(vec![Span::styled(
             " Endpoint List ",
-            Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+            Style::default().fg(if is_focused {
+                Color::Yellow
+            } else {
+                Color::Gray
+            }),
         )]);
 
         let empty_block = Block::default()
@@ -125,7 +153,11 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
 
     let title = Spans::from(vec![Span::styled(
         " Request ",
-        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+        Style::default().fg(if is_focused {
+            Color::Yellow
+        } else {
+            Color::Gray
+        }),
     )]);
 
     let request_block = Block::default()
@@ -176,7 +208,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         Some(method_id) => method_id.to_string(),
         None => String::from(""),
     };
-    
+
     let method_id_paragraph = Paragraph::new(Text::raw(method_id_text))
         .block(
             Block::default()
@@ -233,7 +265,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
     f.render_widget(json_toggle_button, request_chunks[request_chunks.len() - 2]);
 }
 
-fn draw_response_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {    
+fn draw_response_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState, area: Rect) {
     let is_focused = app_state.current_block == AppBlock::EndpointsRes;
     let json_viewer = create_json_viewer(&app_state.json_data, is_focused)
         .scroll((app_state.response_scroll.0, app_state.response_scroll.1));

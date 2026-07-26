@@ -1,7 +1,7 @@
 use ratatui::{
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph},
     text::Span,
+    widgets::{Block, Borders, Paragraph},
 };
 
 pub fn create_input_widget<'a>(label: &'a str, value: &'a str, is_focused: bool) -> Paragraph<'a> {

@@ -1,4 +1,4 @@
-use crate::parser::{Services, Config};
+use crate::parser::{Config, Services};
 use anyhow::{Context, Result};
 use serde_json::from_reader;
 use std::fs::{self, File};
@@ -13,8 +13,8 @@ pub fn load_services<P: AsRef<Path>>(path: P) -> Result<Services> {
 pub fn load_config(path: &str) -> Result<Config> {
     let config_content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read config file: {}", path))?;
-    let config: Config = toml::from_str(&config_content)
-        .with_context(|| "Failed to parse config file")?;
-    
+    let config: Config =
+        toml::from_str(&config_content).with_context(|| "Failed to parse config file")?;
+
     Ok(config)
 }
