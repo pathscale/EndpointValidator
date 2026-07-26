@@ -3,11 +3,11 @@
 //! Run with --help for flag reference.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use endpoint_libs::libs::ws::{WsClient, WsResponseGeneric};
+use endpoint_libs::libs::ws::{WsClient, WsResponseGeneric, WsResponseValue};
 use eyre::{Context, Result};
 use hdrhistogram::Histogram;
 use rustls::crypto::ring;
@@ -80,16 +80,32 @@ fn main() -> eyre::Result<()> {
         println!("Usage: ws-simple [OPTIONS]");
         println!();
         println!("Options:");
-        println!("  --server-url              <url>   WebSocket server (default: {DEFAULT_SERVER_URL})");
-        println!("  --num-requests            <n>     Ops per worker (default: {DEFAULT_NUM_REQUESTS})");
-        println!("  --num-parallel            <n>     Worker count (default: {DEFAULT_NUM_PARALLEL})");
-        println!("  --worker-threads          <n>     Tokio worker threads, 0=auto (default: {DEFAULT_WORKER_THREADS})");
-        println!("  --timeout-ms              <ms>    Network operation timeout (default: {DEFAULT_TIMEOUT_MS})");
-        println!("  --reconnect-attempts      <n>     Retry connection N times on failure (default: {DEFAULT_RECONNECT_ATTEMPTS})");
-        println!("  --type                    <type>  Scenario: connection|message (default: message)");
+        println!(
+            "  --server-url              <url>   WebSocket server (default: {DEFAULT_SERVER_URL})"
+        );
+        println!(
+            "  --num-requests            <n>     Ops per worker (default: {DEFAULT_NUM_REQUESTS})"
+        );
+        println!(
+            "  --num-parallel            <n>     Worker count (default: {DEFAULT_NUM_PARALLEL})"
+        );
+        println!(
+            "  --worker-threads          <n>     Tokio worker threads, 0=auto (default: {DEFAULT_WORKER_THREADS})"
+        );
+        println!(
+            "  --timeout-ms              <ms>    Network operation timeout (default: {DEFAULT_TIMEOUT_MS})"
+        );
+        println!(
+            "  --reconnect-attempts      <n>     Retry connection N times on failure (default: {DEFAULT_RECONNECT_ATTEMPTS})"
+        );
+        println!(
+            "  --type                    <type>  Scenario: connection|message (default: message)"
+        );
         println!("  --params-file             <path>  JSON payload file (default: hardcoded)");
         println!("  --protocol-header-file    <path>  Protocol header file (default: hardcoded)");
-        println!("  --store-raw-responses             Store raw responses (limited to {MAX_RAW_RESPONSES} to prevent OOM)");
+        println!(
+            "  --store-raw-responses             Store raw responses (limited to {MAX_RAW_RESPONSES} to prevent OOM)"
+        );
         println!("  -o, --output              <dir>   Write results JSON to this directory");
         println!("  -h, --help                        Print this help");
         return Ok(());
@@ -135,8 +151,10 @@ fn main() -> eyre::Result<()> {
 
     let protocol_header: &'static str = match parse_flag(&args, "--protocol-header-file") {
         Some(path) => {
-            let raw = std::fs::read_to_string(&path)
-                .unwrap_or_else(|e| { eprintln!("Cannot read protocol header file '{path}': {e}"); std::process::exit(1); });
+            let raw = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                eprintln!("Cannot read protocol header file '{path}': {e}");
+                std::process::exit(1);
+            });
             Box::leak(raw.trim().to_string().into_boxed_str())
         }
         None => PROTOCOL_HEADER,
@@ -146,16 +164,23 @@ fn main() -> eyre::Result<()> {
     // Using fixed seq=1 since recv_raw doesn't validate seq
     let request_bytes: Arc<Vec<u8>> = match parse_flag(&args, "--params-file") {
         Some(path) => {
-            let raw = std::fs::read_to_string(&path)
-                .unwrap_or_else(|e| { eprintln!("Cannot read params file '{path}': {e}"); std::process::exit(1); });
+            let raw = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                eprintln!("Cannot read params file '{path}': {e}");
+                std::process::exit(1);
+            });
             // Validate JSON first
-            serde_json::from_str::<Value>(&raw)
-                .unwrap_or_else(|e| { eprintln!("Invalid JSON in '{path}': {e}"); std::process::exit(1); });
+            serde_json::from_str::<Value>(&raw).unwrap_or_else(|e| {
+                eprintln!("Invalid JSON in '{path}': {e}");
+                std::process::exit(1);
+            });
             let full_req = format!(r#"{{"method":{},"seq":1,"params":{}}}"#, METHOD_CODE, raw);
             Arc::new(full_req.into_bytes())
         }
         None => {
-            let full_req = format!(r#"{{"method":{},"seq":1,"params":{}}}"#, METHOD_CODE, DEFAULT_PARAMS_JSON);
+            let full_req = format!(
+                r#"{{"method":{},"seq":1,"params":{}}}"#,
+                METHOD_CODE, DEFAULT_PARAMS_JSON
+            );
             Arc::new(full_req.into_bytes())
         }
     };
@@ -225,15 +250,7 @@ async fn async_main(
     for id in 0..scenario.num_parallel {
         let request = Arc::clone(&request_bytes);
         join_set.spawn(async move {
-            run_worker(
-                id,
-                scenario,
-                server_url,
-                protocol_header,
-                headers,
-                request,
-            )
-            .await
+            run_worker(id, scenario, server_url, protocol_header, headers, request).await
         });
     }
 
@@ -269,7 +286,9 @@ async fn async_main(
 
         // Print progress every 10% or on last worker
         if progress % 10 == 0 || completed_workers == total_workers {
-            eprintln!("Progress: {completed_workers}/{total_workers} workers complete ({progress}%)");
+            eprintln!(
+                "Progress: {completed_workers}/{total_workers} workers complete ({progress}%)"
+            );
         }
     }
 
@@ -308,15 +327,19 @@ async fn run_worker(
     request_bytes: Arc<Vec<u8>>,
 ) -> Result<WorkerResult> {
     // Pre-allocate histogram for latency recording
-    let mut latency_histogram: Histogram<u64> = Histogram::new(3)
-        .wrap_err("Failed to create latency histogram")?;
+    let mut latency_histogram: Histogram<u64> =
+        Histogram::new(3).wrap_err("Failed to create latency histogram")?;
     let mut errors: u64 = 0;
     let mut sent: u64 = 0;
     let mut logged_first_error = false;
-    
+
     // Expected responses: Connection scenario has 0, Message scenario has up to num_requests
     // Cap at MAX_RAW_RESPONSES to prevent OOM
-    let expected_responses = (scenario.num_requests.checked_mul(scenario.num_parallel).unwrap_or(MAX_RAW_RESPONSES)).min(MAX_RAW_RESPONSES);
+    let expected_responses = (scenario
+        .num_requests
+        .checked_mul(scenario.num_parallel)
+        .unwrap_or(MAX_RAW_RESPONSES))
+    .min(MAX_RAW_RESPONSES);
 
     let mut raw_responses: Vec<serde_json::Value> = Vec::with_capacity(expected_responses);
 
@@ -325,11 +348,13 @@ async fn run_worker(
             for i in 0..scenario.num_requests {
                 let t0 = Instant::now();
                 sent += 1;
-                
+
                 match tokio::time::timeout(
                     Duration::from_millis(scenario.timeout_ms),
                     connect(server_url, protocol_header, headers),
-                ).await {
+                )
+                .await
+                {
                     Ok(Ok((client, status_code, initial_payload))) => {
                         drop(client);
                         let elapsed_us = t0.elapsed().as_micros() as u64;
@@ -345,7 +370,9 @@ async fn run_worker(
                     Ok(Err(e)) => {
                         errors += 1;
                         if !logged_first_error {
-                            let _ = async_stderr_write(&format!("[worker {id}] connect error: {e}\n")).await;
+                            let _ =
+                                async_stderr_write(&format!("[worker {id}] connect error: {e}\n"))
+                                    .await;
                             let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged (total errors: {})\n", scenario.num_requests - i - 1)).await;
                             logged_first_error = true;
                         }
@@ -353,7 +380,10 @@ async fn run_worker(
                     Err(_) => {
                         errors += 1;
                         if !logged_first_error {
-                            let _ = async_stderr_write(&format!("[worker {id}] connect error: timed out\n")).await;
+                            let _ = async_stderr_write(&format!(
+                                "[worker {id}] connect error: timed out\n"
+                            ))
+                            .await;
                             let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged (total errors: {})\n", scenario.num_requests - i - 1)).await;
                             logged_first_error = true;
                         }
@@ -365,12 +395,14 @@ async fn run_worker(
         ScenarioType::Message => {
             // Try to establish initial connection with retries
             let mut client = None;
-            
+
             for attempt in 0..scenario.reconnect_attempts {
                 match tokio::time::timeout(
                     Duration::from_millis(scenario.timeout_ms),
                     connect(server_url, protocol_header, headers),
-                ).await {
+                )
+                .await
+                {
                     Ok(Ok((c, status_code, initial_payload))) => {
                         if scenario.store_raw_responses && raw_responses.len() < MAX_RAW_RESPONSES {
                             raw_responses.push(serde_json::json!({
@@ -385,11 +417,19 @@ async fn run_worker(
                     Ok(Err(e)) => {
                         if attempt < scenario.reconnect_attempts - 1 {
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] connect error (attempt {}/{}): {e}\n", attempt + 1, scenario.reconnect_attempts)).await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] connect error (attempt {}/{}): {e}\n",
+                                    attempt + 1,
+                                    scenario.reconnect_attempts
+                                ))
+                                .await;
                             }
                         } else {
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] connect error (final attempt): {e}\n")).await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] connect error (final attempt): {e}\n"
+                                ))
+                                .await;
                                 logged_first_error = true;
                             }
                         }
@@ -397,11 +437,19 @@ async fn run_worker(
                     Err(_) => {
                         if attempt < scenario.reconnect_attempts - 1 {
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] connect error (attempt {}/{}): timed out\n", attempt + 1, scenario.reconnect_attempts)).await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] connect error (attempt {}/{}): timed out\n",
+                                    attempt + 1,
+                                    scenario.reconnect_attempts
+                                ))
+                                .await;
                             }
                         } else {
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] connect error (final attempt): timed out\n")).await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] connect error (final attempt): timed out\n"
+                                ))
+                                .await;
                                 logged_first_error = true;
                             }
                         }
@@ -414,7 +462,12 @@ async fn run_worker(
             if client.is_none() {
                 errors += scenario.num_requests as u64;
                 sent += scenario.num_requests as u64;
-                return Ok(WorkerResult { sent, errors, latency_histogram, raw_responses });
+                return Ok(WorkerResult {
+                    sent,
+                    errors,
+                    latency_histogram,
+                    raw_responses,
+                });
             }
 
             let mut client = client.unwrap();
@@ -427,13 +480,16 @@ async fn run_worker(
                 match tokio::time::timeout(
                     Duration::from_millis(scenario.timeout_ms),
                     client.send_raw(&request_bytes),
-                ).await {
+                )
+                .await
+                {
                     Ok(Ok(())) => {}
                     Ok(Err(e)) => {
                         errors += 1;
                         iteration_failed = true;
                         if !logged_first_error {
-                            let _ = async_stderr_write(&format!("[worker {id}] send error: {e}\n")).await;
+                            let _ = async_stderr_write(&format!("[worker {id}] send error: {e}\n"))
+                                .await;
                             let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged (total errors: {})\n", scenario.num_requests - i - 1)).await;
                             logged_first_error = true;
                         }
@@ -443,7 +499,10 @@ async fn run_worker(
                         errors += 1;
                         iteration_failed = true;
                         if !logged_first_error {
-                            let _ = async_stderr_write(&format!("[worker {id}] send error: timed out\n")).await;
+                            let _ = async_stderr_write(&format!(
+                                "[worker {id}] send error: timed out\n"
+                            ))
+                            .await;
                             let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged (total errors: {})\n", scenario.num_requests - i - 1)).await;
                             logged_first_error = true;
                         }
@@ -456,20 +515,28 @@ async fn run_worker(
                     let t0 = Instant::now();
                     match tokio::time::timeout(
                         Duration::from_millis(scenario.timeout_ms),
-                        client.recv_raw(),
-                    ).await {
+                        client.recv_resp::<WsResponseValue>(),
+                    )
+                    .await
+                    {
                         Ok(Ok(WsResponseGeneric::Immediate(data))) => {
                             let elapsed_us = t0.elapsed().as_micros() as u64;
                             latency_histogram.record(elapsed_us).ok();
-                            if scenario.store_raw_responses && raw_responses.len() < MAX_RAW_RESPONSES {
-                                raw_responses.push(serde_json::json!({"type": "immediate", "data": data}));
+                            if scenario.store_raw_responses
+                                && raw_responses.len() < MAX_RAW_RESPONSES
+                            {
+                                raw_responses
+                                    .push(serde_json::json!({"type": "immediate", "data": data}));
                             }
                         }
                         Ok(Ok(WsResponseGeneric::Stream(data))) => {
                             let elapsed_us = t0.elapsed().as_micros() as u64;
                             latency_histogram.record(elapsed_us).ok();
-                            if scenario.store_raw_responses && raw_responses.len() < MAX_RAW_RESPONSES {
-                                raw_responses.push(serde_json::json!({"type": "stream", "data": data}));
+                            if scenario.store_raw_responses
+                                && raw_responses.len() < MAX_RAW_RESPONSES
+                            {
+                                raw_responses
+                                    .push(serde_json::json!({"type": "stream", "data": data}));
                             }
                         }
                         Ok(Ok(WsResponseGeneric::Error(e))) => {
@@ -478,14 +545,21 @@ async fn run_worker(
                                 let _ = async_stderr_write(&format!(
                                     "[worker {id}] server error: code={} log={}\n",
                                     e.code, e.log_id
-                                )).await;
-                                let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged\n")).await;
+                                ))
+                                .await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] further errors will not be logged\n"
+                                ))
+                                .await;
                                 logged_first_error = true;
                             }
                         }
                         Ok(Ok(WsResponseGeneric::Close)) => {
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] server closed connection\n")).await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] server closed connection\n"
+                                ))
+                                .await;
                             }
                             break;
                         }
@@ -493,8 +567,13 @@ async fn run_worker(
                         Ok(Err(e)) => {
                             errors += 1;
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] recv error: {e}\n")).await;
-                                let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged\n")).await;
+                                let _ =
+                                    async_stderr_write(&format!("[worker {id}] recv error: {e}\n"))
+                                        .await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] further errors will not be logged\n"
+                                ))
+                                .await;
                                 logged_first_error = true;
                             }
                             break;
@@ -502,8 +581,14 @@ async fn run_worker(
                         Err(_) => {
                             errors += 1;
                             if !logged_first_error {
-                                let _ = async_stderr_write(&format!("[worker {id}] recv error: timed out\n")).await;
-                                let _ = async_stderr_write(&format!("[worker {id}] further errors will not be logged\n")).await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] recv error: timed out\n"
+                                ))
+                                .await;
+                                let _ = async_stderr_write(&format!(
+                                    "[worker {id}] further errors will not be logged\n"
+                                ))
+                                .await;
                                 logged_first_error = true;
                             }
                             break;
@@ -514,7 +599,12 @@ async fn run_worker(
         }
     }
 
-    Ok(WorkerResult { sent, errors, latency_histogram, raw_responses })
+    Ok(WorkerResult {
+        sent,
+        errors,
+        latency_histogram,
+        raw_responses,
+    })
 }
 
 /// Async write to stderr to avoid blocking on I/O
@@ -536,23 +626,23 @@ async fn connect(
     };
     let (mut client, response) = WsClient::new(server_url, protocol_header, headers).await?;
     let status_code = response.status().as_u16();
-    
+
     // Try to receive initial payload from endpoint
     let initial_payload = match tokio::time::timeout(
         Duration::from_millis(500),
-        client.recv_raw(),
-    ).await {
+        client.recv_resp::<WsResponseValue>(),
+    )
+    .await
+    {
         Ok(Ok(msg)) => Some(serde_json::to_value(&msg)?),
         _ => None,
     };
-    
+
     Ok((client, status_code, initial_payload))
 }
 
 fn parse_flag(args: &[String], flag: &str) -> Option<String> {
-    args.windows(2)
-        .find(|w| w[0] == flag)
-        .map(|w| w[1].clone())
+    args.windows(2).find(|w| w[0] == flag).map(|w| w[1].clone())
 }
 
 fn print_summary(sent: u64, errors: u64, histogram: &Histogram<u64>, elapsed: Duration) {
@@ -574,9 +664,18 @@ fn print_summary(sent: u64, errors: u64, histogram: &Histogram<u64>, elapsed: Du
     if histogram.len() > 0 {
         println!("│  Latency (RTT ms):");
         println!("│    mean  {:>8.2}", histogram.mean() as f64 / 1000.0);
-        println!("│    p50   {:>8.2}", histogram.value_at_percentile(50.0) as f64 / 1000.0);
-        println!("│    p95   {:>8.2}", histogram.value_at_percentile(95.0) as f64 / 1000.0);
-        println!("│    p99   {:>8.2}", histogram.value_at_percentile(99.0) as f64 / 1000.0);
+        println!(
+            "│    p50   {:>8.2}",
+            histogram.value_at_percentile(50.0) as f64 / 1000.0
+        );
+        println!(
+            "│    p95   {:>8.2}",
+            histogram.value_at_percentile(95.0) as f64 / 1000.0
+        );
+        println!(
+            "│    p99   {:>8.2}",
+            histogram.value_at_percentile(99.0) as f64 / 1000.0
+        );
         println!("│    min   {:>8.2}", histogram.min() as f64 / 1000.0);
         println!("│    max   {:>8.2}", histogram.max() as f64 / 1000.0);
     }
@@ -661,7 +760,10 @@ fn write_results(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let path = format!("{dir}/ws_simple_{ts}_p{}_r{}.json", scenario.num_parallel, scenario.num_requests);
+    let path = format!(
+        "{dir}/ws_simple_{ts}_p{}_r{}.json",
+        scenario.num_parallel, scenario.num_requests
+    );
     fs::write(&path, serde_json::to_string_pretty(&doc)?)?;
     println!("Results written to {path}");
     Ok(())

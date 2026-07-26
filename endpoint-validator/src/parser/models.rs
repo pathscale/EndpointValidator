@@ -1,114 +1,44 @@
-// TODO(future): These types (Field, Type, EndpointSchema) diverge from
-// endpoint_libs::model. A future migration should:
-// 1. Switch EndpointValidator from services.json to RON files (via endpoint_gen::loader)
-// 2. Replace these types with endpoint_libs::model::{Field, Type, EndpointSchema}
-// 3. Rewrite services.rs convert_value() and extract_endpoints() accordingly
-// This would align both endpoint-validator and ws-load-test on the same type system.
+//! Types for reading `services.json`, the machine-readable endpoint description
+//! written by `endpoint-gen`.
+//!
+//! The schema types are **not** redefined here. They are re-exported from
+//! [`endpoint_libs::model`], which is where `endpoint-gen` gets them from when it
+//! writes the file. This crate previously kept hand-copied duplicates, which
+//! silently rotted: `EnumVariant.comment` was renamed to `description` upstream
+//! and the copy here never followed, so every current `services.json` failed to
+//! parse with `missing field 'comment'`. The vendored `Type` had also drifted
+//! badly — it still listed `Date`, `Int`, `BigInt`, `Numeric`, `Inet` and
+//! `DataTable`, none of which exist upstream, and was missing `UInt32`, `Int32`,
+//! `Int64`, `Float64`, `NanoId`, `IpAddr` and `StructTable`.
+//!
+//! Anything describing the wire schema belongs upstream. Only this tool's own
+//! config types are defined here.
 
-use serde::*;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, Hash, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Field {
-    pub name: String,
-    pub ty: Type,
-}
+use serde::Deserialize;
 
-#[derive(Clone, Debug, Hash, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-pub struct EnumVariant {
-    pub name: String,
-    pub value: i64,
-    pub comment: String,
-}
+pub use endpoint_libs::model::{EndpointSchema, EnumVariant, Field, Service, Type};
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
-pub enum Type {
-    TimeStampMs,
-    Date,
-    Int,
-    BigInt,
-    Numeric,
-    Boolean,
-    String,
-    Bytea,
-    UUID,
-    Inet,
-    Struct {
-        name: String,
-        fields: Vec<Field>,
-    },
-    StructRef(String),
-    Object,
-    DataTable {
-        name: String,
-        fields: Vec<Field>,
-    },
-    Vec(Box<Type>),
-    Unit,
-    Optional(Box<Type>),
-    Enum {
-        name: String,
-        variants: Vec<EnumVariant>,
-    },
-    EnumRef(String),
-    BlockchainDecimal,
-    BlockchainAddress,
-    BlockchainTransactionHash,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EnumDef {
-    pub name: String,
-    pub variants: Vec<EnumVariant>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EnumData {
-    #[serde(rename = "Enum")]
-    enum_def: EnumDef,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EndpointSchema {
-    pub name: String,
-    pub code: u32,
-    pub parameters: Vec<Field>,
-    pub returns: Vec<Field>,
-    pub stream_response: Option<Type>,
-    pub description: String,
-    pub json_schema: serde_json::Value,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EndpointsType {
-    pub endpoints: Vec<EndpointSchema>,
-    pub id: u32,
-    pub name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+/// The whole of `services.json`.
+///
+/// `enums` and `structs` deserialize as bare [`Type`]s because that is literally
+/// what they are: serde's external tagging renders `Type::Enum` as
+/// `{"Enum": {...}}` and `Type::Struct` as `{"Struct": {...}}`, exactly as the
+/// file contains them.
+///
+/// Note the file holds only `frontend_facing` endpoints — `endpoint-gen`'s
+/// deliberate choice, so this tool sees the public surface and nothing else.
+#[derive(Debug, Deserialize)]
 pub struct Services {
-    pub enums: Vec<EnumData>,
-    pub services: Vec<EndpointsType>,
+    #[serde(default)]
+    pub enums: Vec<Type>,
+    pub services: Vec<Service>,
+    #[serde(default)]
+    pub structs: Vec<Type>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Endpoints(pub Vec<String>);
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorCode {
-    pub code: u32,
-    pub symbol: String,
-    pub message: String,
-    pub source: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorCodes {
-    pub language: String,
-    pub codes: Vec<ErrorCode>,
-}
-
+/// One endpoint, flattened into what the driver needs to issue a call.
 #[derive(Debug, Clone)]
 pub struct EndpointMetadata {
     pub service_name: String,
@@ -123,6 +53,7 @@ pub struct ParameterMetadata {
     pub ty: Type,
 }
 
+/// `config.toml` — preset parameter values, keyed by endpoint.
 #[derive(Debug, Deserialize)]
 pub struct Config {
     #[serde(flatten)]

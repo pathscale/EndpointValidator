@@ -1,7 +1,17 @@
-use crate::parser::{Services, EndpointMetadata, ParameterMetadata, Type, ParamValue, EndpointData};
+use crate::parser::{
+    EndpointData, EndpointMetadata, ParamValue, ParameterMetadata, Services, Type,
+};
+use anyhow::{Context, Result, anyhow, bail};
+use serde_json::{Number, Value};
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
-use serde_json::{Value, Number, json};
+
+/// Turning a `config.toml` string into a wire value.
+///
+/// A trait because `Type` lives in `endpoint-libs` now, so an inherent impl is
+/// not ours to write.
+pub trait ConvertValue {
+    fn convert_value(&self, value: &str) -> Result<Value>;
+}
 
 impl Services {
     pub fn extract_endpoints(&self) -> (Vec<String>, HashMap<String, EndpointMetadata>) {
@@ -25,7 +35,7 @@ impl Services {
 
                 let metadata = EndpointMetadata {
                     service_name: service.name.clone(),
-                    method_id: endpoint.code as u32,
+                    method_id: endpoint.code,
                     params: param_names_and_types,
                     is_stream: returns_stream,
                 };
@@ -38,105 +48,132 @@ impl Services {
     }
 }
 
-impl Type {
-    pub fn convert_value(&self, value: &str) -> Result<Value, anyhow::Error> {
-        match self {
-            Type::String => Ok(Value::String(value.to_string())),
-            Type::Int => {
-                let parsed_value: i32 = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Number(Number::from(parsed_value)))
-            }
-            Type::BigInt => {
-                let parsed_value: i64 = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Number(Number::from(parsed_value)))
-            }
-            Type::Numeric => {
-                let parsed_value: f64 = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Number(Number::from_f64(parsed_value).ok_or_else(|| anyhow!("Invalid number"))?))
-            }
-            Type::Boolean => {
-                let parsed_value: bool = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Bool(parsed_value))
-            }
-            Type::TimeStampMs => {
-                let parsed_value: i64 = value.parse().map_err(anyhow::Error::msg)?;
-                Ok(Value::Number(Number::from(parsed_value)))
-            }
-            Type::Date => Ok(Value::String(value.to_string())), // Assuming dates are strings
-            Type::UUID => Ok(Value::String(value.to_string())), // Assuming UUIDs are strings
-            Type::Inet => Ok(Value::String(value.to_string())), // Assuming Inet is a string representation
-            Type::Bytea => Ok(Value::String(value.to_string())), // Assuming Bytea is a string representation
-            Type::BlockchainDecimal => Ok(Value::String(value.to_string())), // Assuming it’s a string or number
-            Type::BlockchainAddress => Ok(Value::String(value.to_string())), // Assuming it’s a string
-            Type::BlockchainTransactionHash => Ok(Value::String(value.to_string())), // Assuming it’s a string
-            Type::Optional(inner_type) => {
+impl ConvertValue for Type {
+    /// Converts a `config.toml` string into the JSON value the wire expects.
+    ///
+    /// Mirrors `endpoint_libs::model::Type::to_json_schema`: whatever that says
+    /// a field looks like on the wire is what this must produce, or the server
+    /// rejects the call.
+    fn convert_value(&self, value: &str) -> Result<Value> {
+        Ok(match self {
+            Type::String
+            | Type::UUID
+            | Type::Bytea
+            | Type::IpAddr
+            | Type::NanoId { .. }
+            | Type::BlockchainDecimal
+            | Type::BlockchainAddress
+            | Type::BlockchainTransactionHash => Value::String(value.to_string()),
+
+            Type::UInt32 => Value::Number(Number::from(value.parse::<u32>()?)),
+            Type::Int32 => Value::Number(Number::from(value.parse::<i32>()?)),
+            Type::Int64 | Type::TimeStampMs => Value::Number(Number::from(value.parse::<i64>()?)),
+            Type::Float64 => Value::Number(
+                Number::from_f64(value.parse::<f64>()?)
+                    .ok_or_else(|| anyhow!("`{value}` is not a finite number"))?,
+            ),
+            Type::Boolean => Value::Bool(value.parse::<bool>()?),
+            Type::Unit => Value::Null,
+            Type::Object => serde_json::from_str(value)
+                .with_context(|| format!("`{value}` is not valid JSON for an Object field"))?,
+
+            Type::Optional(inner) => {
                 if value.is_empty() {
-                    Ok(Value::Null)
+                    Value::Null
                 } else {
-                    inner_type.convert_value(value)
+                    inner.convert_value(value)?
                 }
             }
-            Type::Vec(inner_type) => {
-                let values: Vec<&str> = value.split(',').collect(); // Assuming comma-separated values
-                let converted_values: Result<Vec<Value>, anyhow::Error> = values.iter().map(|v| inner_type.convert_value(v)).collect();
-                Ok(Value::Array(converted_values?))
-            }
-            Type::Struct { fields, .. } => {
-                let values: HashMap<&str, &str> = value.split(',')
-                    .map(|pair| {
-                        let mut iter = pair.splitn(2, ':');
-                        (iter.next().unwrap(), iter.next().unwrap_or(""))
-                    })
+            Type::Vec(inner) => Value::Array(
+                split_top_level(value, ',')
+                    .iter()
+                    .map(|v| inner.convert_value(v))
+                    .collect::<Result<Vec<_>>>()?,
+            ),
+
+            Type::Struct { name, fields } => {
+                let supplied: HashMap<&str, &str> = split_top_level(value, ',')
+                    .into_iter()
+                    .filter_map(|pair| pair.split_once(':'))
+                    .map(|(k, v)| (k.trim(), v.trim()))
                     .collect();
 
                 let mut map = serde_json::Map::new();
                 for field in fields {
-                    if let Some(val) = values.get(field.name.as_str()) {
-                        map.insert(field.name.clone(), field.ty.convert_value(val)?);
-                    }
-                }
-                Ok(Value::Object(map))
-            }
-            Type::DataTable { fields, .. } => {
-                let rows: Vec<&str> = value.split(';').collect(); // Assuming rows are separated by semicolons
-                let converted_rows: Result<Vec<Value>, anyhow::Error> = rows.iter().map(|row| {
-                    let values: HashMap<&str, &str> = row.split(',')
-                        .map(|pair| {
-                            let mut iter = pair.splitn(2, ':');
-                            (iter.next().unwrap(), iter.next().unwrap_or(""))
-                        })
-                        .collect();
-
-                    let mut map = serde_json::Map::new();
-                    for field in fields {
-                        if let Some(val) = values.get(field.name.as_str()) {
-                            map.insert(field.name.clone(), field.ty.convert_value(val)?);
+                    match supplied.get(field.name.as_str()) {
+                        Some(v) => {
+                            map.insert(field.name.clone(), field.ty.convert_value(v)?);
                         }
+                        // A missing Optional is simply absent; a missing required
+                        // field is a config error worth naming.
+                        None if matches!(field.ty, Type::Optional(_)) => {}
+                        None => bail!("struct `{name}`: missing required field `{}`", field.name),
                     }
-                    Ok(Value::Object(map))
-                }).collect();
-
-                Ok(Value::Array(converted_rows?))
+                }
+                Value::Object(map)
             }
+
+            // Enums go over the wire as their integer value, not their name --
+            // see `enum_to_schema` upstream, which emits `type: integer` with a
+            // `const` per variant. Accept either spelling in config.
             Type::Enum { name, variants } => {
-                if variants.iter().any(|v| v.name == value) {
-                    Ok(Value::String(value.to_string()))
+                if let Some(variant) = variants.iter().find(|v| v.name == value) {
+                    Value::Number(Number::from(variant.value))
+                } else if let Ok(n) = value.parse::<i64>() {
+                    if variants.iter().any(|v| v.value == n) {
+                        Value::Number(Number::from(n))
+                    } else {
+                        bail!("enum `{name}`: no variant has value {n}");
+                    }
                 } else {
-                    Err(anyhow!("Invalid variant for enum {}: {}", name, value))
+                    bail!(
+                        "enum `{name}`: `{value}` is not a variant. Expected one of: {}",
+                        variants
+                            .iter()
+                            .map(|v| v.name.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
                 }
             }
-            Type::EnumRef(_name) => {
-                // Assuming EnumRef behaves similarly to Enum
-                Ok(Value::String(value.to_string()))
+
+            // References cannot be resolved without the registry, so accept raw
+            // JSON and let the server validate. Better than the previous
+            // behaviour, which silently sent the string.
+            Type::StructRef(name) | Type::EnumRef { name, .. } => serde_json::from_str(value)
+                .with_context(|| format!("`{value}` is not valid JSON for `{name}`"))?,
+            Type::StructTable { struct_ref } => serde_json::from_str(value)
+                .with_context(|| format!("`{value}` is not valid JSON for table `{struct_ref}`"))?,
+
+            // `Type` is #[non_exhaustive] upstream: a new variant must fail
+            // loudly here rather than be silently mis-encoded.
+            other => {
+                bail!("unsupported parameter type {other:?} — endpoint-validator needs updating")
             }
-            Type::StructRef(_name) => {
-                // Assuming StructRef behaves similarly to Struct
-                Ok(Value::String(value.to_string()))
+        })
+    }
+}
+
+/// Splits on `sep`, ignoring separators nested inside `{}`, `[]` or quotes.
+///
+/// The previous implementation used a plain `split(',')`, which corrupted any
+/// nested struct or array value.
+fn split_top_level(value: &str, sep: char) -> Vec<&str> {
+    let (mut parts, mut depth, mut start, mut quoted) = (Vec::new(), 0i32, 0usize, false);
+    for (i, c) in value.char_indices() {
+        match c {
+            '"' => quoted = !quoted,
+            '{' | '[' if !quoted => depth += 1,
+            '}' | ']' if !quoted => depth -= 1,
+            c if c == sep && depth == 0 && !quoted => {
+                parts.push(value[start..i].trim());
+                start = i + c.len_utf8();
             }
-            Type::Object => Ok(json!(value)), // Assuming object as a string or raw JSON
-            Type::Unit => Ok(Value::Null), // Unit type maps to Null in JSON
+            _ => {}
         }
     }
+    parts.push(value[start..].trim());
+    parts.into_iter().filter(|p| !p.is_empty()).collect()
 }
 
 pub fn extract_param_defaults(

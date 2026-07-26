@@ -2,13 +2,21 @@
 name = "ws-load-test"
 version = "0.1.0"
 edition = "2024"
+# Internal benchmark harness -- not published. It also backs the CIDR 2027
+# measurements, so its threading behaviour must not drift casually.
+#
+# Held at endpoint-libs 1.9 rather than 2.x. 2.0 made WsClient's futures
+# non-Send, so the JoinSet-of-workers model here stops compiling: moving to 2.x
+# needs a runtime + LocalSet per pinned core, which changes the very concurrency
+# characteristics these benchmarks measure. That is its own piece of work.
+publish = false
 
 [[bin]]
 name = "ws-simple"
 path = "src/bin/ws_simple.rs"
 
 [dependencies]
-endpoint-libs = { version = "1.4", features = ["ws"] }
+endpoint-libs = { version = "1.9", features = ["ws", "ws-client"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 eyre = "0.6"

@@ -1,4 +1,6 @@
 // TODO
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {Ok(())}
+async fn main() -> eyre::Result<()> {
+    Ok(())
+}

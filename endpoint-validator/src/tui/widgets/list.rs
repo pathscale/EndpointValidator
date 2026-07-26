@@ -1,14 +1,10 @@
 use ratatui::{
-    style::{Color, Style, Modifier},
+    style::{Color, Modifier, Style},
     text::{Span, Spans},
     widgets::{Block, Borders, List, ListItem},
 };
 
-pub fn create_list_widget<'a>(
-    items: &'a [String],
-    selected: usize,
-    is_focused: bool,
-) -> List<'a> {
+pub fn create_list_widget<'a>(items: &'a [String], selected: usize, is_focused: bool) -> List<'a> {
     let visible_items = &items[selected as usize..];
     let list_items: Vec<ListItem> = visible_items
         .iter()
@@ -25,17 +21,29 @@ pub fn create_list_widget<'a>(
 
     let title = Spans::from(vec![Span::styled(
         "Endpoints",
-        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+        Style::default().fg(if is_focused {
+            Color::Yellow
+        } else {
+            Color::Gray
+        }),
     )]);
 
     let list = List::new(list_items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }))
+                .border_style(Style::default().fg(if is_focused {
+                    Color::Yellow
+                } else {
+                    Color::Gray
+                }))
                 .title(title),
         )
-        .highlight_style(Style::default().fg(Color::LightCyan).add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .fg(Color::LightCyan)
+                .add_modifier(Modifier::BOLD),
+        );
 
     list
 }

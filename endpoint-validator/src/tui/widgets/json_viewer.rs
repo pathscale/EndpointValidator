@@ -9,7 +9,11 @@ pub fn create_json_viewer<'a>(json_data: &'a Option<String>, is_focused: bool) -
 
     let title = Spans::from(vec![Span::styled(
         " Response ",
-        Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }),
+        Style::default().fg(if is_focused {
+            Color::Yellow
+        } else {
+            Color::Gray
+        }),
     )]);
 
     Paragraph::new(json_display)
@@ -17,7 +21,11 @@ pub fn create_json_viewer<'a>(json_data: &'a Option<String>, is_focused: bool) -
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if is_focused { Color::Yellow } else { Color::Gray }))
+                .border_style(Style::default().fg(if is_focused {
+                    Color::Yellow
+                } else {
+                    Color::Gray
+                }))
                 .title(title),
         )
 }

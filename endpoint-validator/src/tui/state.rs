@@ -1,6 +1,7 @@
+use crate::parser::services::ConvertValue;
 use crate::parser::{EndpointMetadata, ParameterMetadata};
 use crate::ws::WsClient;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
