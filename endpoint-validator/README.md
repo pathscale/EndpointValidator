@@ -3,6 +3,14 @@
 Interactive test harness for [`endpoint-libs`](https://crates.io/crates/endpoint-libs)
 WebSocket RPC services.
 
+```sh
+endpoint-validator list path/to/backend/docs/services.json
+```
+
+prints each endpoint's code, name and parameter types.
+
+## The TUI
+
 It reads `services.json` — the machine-readable endpoint description written by
 [`endpoint-gen`](https://crates.io/crates/endpoint-gen) — plus a `config.toml` of preset
 parameter values, connects to a running server, and lets you exercise endpoints from a
@@ -45,9 +53,19 @@ params.remember = true
 ## Using it
 
 The TUI shows endpoints on the left, parameters in the middle, responses on the right.
-`Tab` moves between panes, arrow keys move within one, `Enter` activates. Connect with a
-username and password first; the endpoint list populates from `services.json` once the
-connection is up.
+`Tab` moves between panes, arrow keys move within one, `Enter` activates. `Esc` quits.
+
+Set the URL, pick the service's connect endpoint (`Init`, a login, an app connect),
+fill its parameters and send it: with no connection open, the endpoint you send is the
+handshake, and its parameters go in `Sec-WebSocket-Protocol`. The connection stays open,
+and every endpoint you send after it is a call on it. A call shows the frame answering
+it, and stream updates show as they arrive. The Settings pane's username and password
+are for the older `loginstep1` / `loginstep2` handshake.
+
+## Runtime
+
+The client is endpoint-libs' own, on a nagoya reactor that `main` owns: no tokio, no
+tungstenite, no reqwest. `wss://` works through endpoint-libs' `ws-client-tls`.
 
 ## Schema types come from `endpoint-libs`
 
@@ -73,12 +91,13 @@ Strings in `config.toml` are converted to the JSON the server expects, following
 
 - Integers, floats and booleans are parsed, not passed through as strings.
 - An empty value for an `Optional` field becomes `null`.
-- **Enums travel as their integer value, not their name.** Either spelling works in config
-  — `Owner` or `0` — and both send `0`. (The pre-1.0 code sent the name as a string, which
-  a server rejects.)
+- **Enums travel as their variant name.** endpoint-libs servers deserialize the generated
+  enums with plain serde and refuse an integer with "unknown variant". Either spelling
+  works in config, `Owner` or `0`, and both send `"Owner"`. An `EnumRef` takes the bare
+  name too.
 - `Struct` values are `field: value` pairs. Nesting inside `{}` or `[]` is respected, so a
   nested struct or array is not split on its internal commas.
-- `Object`, `StructRef`, `EnumRef` and `StructTable` values are parsed as raw JSON.
+- `Object`, `StructRef` and `StructTable` values are parsed as raw JSON.
 
 An unsupported type is a hard error naming it, rather than a silently mis-encoded request.
 

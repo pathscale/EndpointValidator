@@ -12,14 +12,7 @@ pub fn create_input_widget<'a>(label: &'a str, value: &'a str, is_focused: bool)
         } else {
             Color::Gray
         }))
-        .title(Span::styled(
-            label,
-            Style::default().fg(if is_focused {
-                Color::Gray // Highlight title when focused
-            } else {
-                Color::Gray
-            }),
-        ));
+        .title(Span::styled(label, Style::default().fg(Color::Gray)));
 
     Paragraph::new(value)
         .style(Style::default().fg(Color::Gray))

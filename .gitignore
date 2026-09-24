@@ -11,3 +11,4 @@ ws-load-test/venv
 /.opencode
 /.serena
 /.kiro
+Cargo.lock

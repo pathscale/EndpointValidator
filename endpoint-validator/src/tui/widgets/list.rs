@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 pub fn create_list_widget<'a>(items: &'a [String], selected: usize, is_focused: bool) -> List<'a> {
-    let visible_items = &items[selected as usize..];
+    let visible_items = &items[selected..];
     let list_items: Vec<ListItem> = visible_items
         .iter()
         .enumerate()
@@ -28,7 +28,7 @@ pub fn create_list_widget<'a>(items: &'a [String], selected: usize, is_focused: 
         }),
     )]);
 
-    let list = List::new(list_items)
+    List::new(list_items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -43,7 +43,5 @@ pub fn create_list_widget<'a>(items: &'a [String], selected: usize, is_focused: 
             Style::default()
                 .fg(Color::LightCyan)
                 .add_modifier(Modifier::BOLD),
-        );
-
-    list
+        )
 }

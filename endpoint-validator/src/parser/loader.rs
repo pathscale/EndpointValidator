@@ -1,5 +1,5 @@
 use crate::parser::{Config, Services};
-use anyhow::{Context, Result};
+use eyre::{Result, WrapErr};
 use serde_json::from_reader;
 use std::fs::{self, File};
 use std::path::Path;
