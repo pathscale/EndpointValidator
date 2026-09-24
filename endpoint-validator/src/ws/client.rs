@@ -1,80 +1,69 @@
-use anyhow::{Context, Result, anyhow};
-use futures::{SinkExt, StreamExt};
-use serde::Serialize;
-use tokio::net::TcpStream;
-use tokio_tungstenite::tungstenite::http::HeaderValue;
-use tokio_tungstenite::tungstenite::{Message, client::IntoClientRequest};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
+//! The connection, on endpoint-libs' own client.
+//!
+//! endpoint-libs' `WsClient` runs on a nagoya reactor that the caller owns, so
+//! every function here takes the reactor's [`Handle`]. There is no ambient
+//! runtime: a socket opened on a reactor nobody polls never completes.
 
-pub struct WsClient {
-    stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
-    seq: u32,
+use std::time::Duration;
+
+pub use endpoint_libs::libs::ws::WsClient;
+use endpoint_libs::libs::ws::WsClientBuilder;
+use eyre::{Result, WrapErr, bail};
+use futures::FutureExt;
+use futures::future::{Either, select};
+pub use nagoya::reactor::Handle;
+
+/// How long to wait for one frame before calling the service unresponsive.
+pub const RECV_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Open a connection, sending `protocol` as `Sec-WebSocket-Protocol`.
+///
+/// endpoint-libs servers authenticate in that header: `0<endpoint>, 1<param>, 2<param>...`,
+/// with the connect endpoint's name lowercased and its parameters in schema
+/// order. See [`protocol_header`].
+pub async fn connect(url: &str, protocol: &str, handle: &Handle) -> Result<WsClient> {
+    let (client, _) = WsClientBuilder::new()
+        .protocol_header(protocol)
+        .build(url, handle)
+        .await
+        .wrap_err_with(|| format!("could not connect to {url}"))?;
+    Ok(client)
 }
 
-#[derive(Serialize)]
-struct WsRequest<T: Serialize> {
-    method: u32,
-    seq: u32,
-    params: T,
+/// The handshake header for a connect endpoint and its parameter values, in
+/// schema order. Each value is numbered by its position, so a missing
+/// optional one is left out without moving the ones after it.
+pub fn protocol_header(endpoint: &str, params: &[Option<String>]) -> String {
+    std::iter::once(format!("0{}", endpoint.to_ascii_lowercase()))
+        .chain(
+            params
+                .iter()
+                .enumerate()
+                .filter_map(|(i, value)| value.as_ref().map(|value| format!("{}{value}", i + 1))),
+        )
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
-impl WsClient {
-    pub async fn new(connect_addr: &str, header: &str) -> Result<Self> {
-        let mut req = <&str as IntoClientRequest>::into_client_request(connect_addr)
-            .context("Failed to create client request")?;
-
-        req.headers_mut().insert(
-            "Sec-WebSocket-Protocol",
-            HeaderValue::from_str(header).context("Invalid header value")?,
-        );
-
-        let (ws_stream, _) = connect_async(req)
-            .await
-            .context("Failed to connect to endpoint")?;
-        Ok(Self {
-            stream: ws_stream,
-            seq: 0,
-        })
+/// The next frame, or an error after [`RECV_TIMEOUT`].
+pub async fn recv(client: &mut WsClient) -> Result<serde_json::Value> {
+    match recv_within(client, RECV_TIMEOUT).await? {
+        Some(frame) => Ok(frame),
+        None => bail!("no frame within {}s", RECV_TIMEOUT.as_secs()),
     }
+}
 
-    pub async fn send_req(&mut self, method: u32, params: impl Serialize) -> Result<()> {
-        self.seq += 1;
-        let req = serde_json::to_string(&WsRequest {
-            method: method,
-            seq: self.seq,
-            params: params,
-        })
-        .context("Failed to serialize request")?;
-        self.stream
-            .send(Message::text(req))
-            .await
-            .context("Failed to send request")?;
-        Ok(())
-    }
-
-    pub async fn recv_raw(&mut self) -> Result<serde_json::Value> {
-        // Get the next message from the stream, or return an error if the connection is closed
-        let msg = self
-            .stream
-            .next()
-            .await
-            .ok_or_else(|| anyhow!("Connection closed"))?
-            .context("Failed to receive message")?;
-
-        let json_value = match msg {
-            Message::Text(text) => serde_json::from_str(text.as_str())
-                .context("Failed to parse received message as JSON")?,
-            _ => return Err(anyhow!("Received unexpected non-text message")),
-        };
-
-        Ok(json_value)
-    }
-
-    pub async fn close(mut self) -> Result<()> {
-        self.stream
-            .close(None)
-            .await
-            .context("Failed to close connection")?;
-        Ok(())
+/// The next frame if one arrives within `wait`. Frames are buffered by the
+/// connection, so giving up leaves nothing half read.
+pub async fn recv_within(
+    client: &mut WsClient,
+    wait: Duration,
+) -> Result<Option<serde_json::Value>> {
+    let frame = client.recv_raw().fuse();
+    let timeout = nagoya::sleep(wait).fuse();
+    futures::pin_mut!(frame, timeout);
+    match select(frame, timeout).await {
+        Either::Left((frame, _)) => frame.map(Some),
+        Either::Right(_) => Ok(None),
     }
 }

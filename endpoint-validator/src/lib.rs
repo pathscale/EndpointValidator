@@ -1,5 +1,5 @@
 //! Test harness for [`endpoint-libs`](https://crates.io/crates/endpoint-libs)
-//! WebSocket RPC services.
+//! WebSocket RPC services: an interactive TUI.
 //!
 //! Reads `services.json` — the machine-readable endpoint description written by
 //! [`endpoint-gen`](https://crates.io/crates/endpoint-gen) — plus a `config.toml`

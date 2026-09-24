@@ -120,7 +120,7 @@ fn draw_endpoints_screen<B: Backend>(f: &mut Frame<B>, app_state: &mut AppState,
         .split(area);
 
     let is_focused = app_state.current_block == AppBlock::EndpointList;
-    if app_state.connected {
+    if !app_state.endpoints.is_empty() {
         let list_widget = create_list_widget(
             &app_state.endpoints,
             app_state.selected_endpoint,

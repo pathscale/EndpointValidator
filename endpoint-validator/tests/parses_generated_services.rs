@@ -44,10 +44,9 @@ fn every_endpoint_exposes_usable_metadata() {
 }
 
 #[test]
-fn enum_variants_convert_to_their_wire_integer() {
-    // Enums travel as integers, not names -- `enum_to_schema` upstream emits
-    // `type: integer` with a const per variant. The pre-migration code sent the
-    // variant name as a string, which a server would reject.
+fn enum_variants_convert_to_their_wire_name() {
+    // Enums travel as their variant name: endpoint-libs servers deserialize the
+    // generated enums with plain serde and refuse an integer ("unknown variant").
     let services = fixture();
     let enum_ty = services
         .enums
@@ -62,12 +61,12 @@ fn enum_variants_convert_to_their_wire_integer() {
 
     assert_eq!(
         enum_ty.convert_value(&first.name).unwrap(),
-        serde_json::json!(first.value)
+        serde_json::json!(first.name)
     );
     // The numeric spelling is accepted too.
     assert_eq!(
         enum_ty.convert_value(&first.value.to_string()).unwrap(),
-        serde_json::json!(first.value)
+        serde_json::json!(first.name)
     );
     assert!(enum_ty.convert_value("NotAVariant").is_err());
 }

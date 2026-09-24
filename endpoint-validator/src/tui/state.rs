@@ -1,7 +1,7 @@
 use crate::parser::services::ConvertValue;
 use crate::parser::{EndpointMetadata, ParameterMetadata};
-use crate::ws::WsClient;
-use anyhow::{Context, Result, bail};
+use crate::ws::{self, Handle, WsClient};
+use eyre::{ContextCompat, Result, WrapErr, bail};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
@@ -36,6 +36,7 @@ pub enum JsonViewMode {
 }
 
 pub struct AppState {
+    pub handle: Handle,
     pub client: Option<WsClient>,
     pub current_block: AppBlock,
     pub focused_settings_field: Option<SettingsField>,
@@ -57,6 +58,8 @@ pub struct AppState {
     pub endpoint_data: HashMap<String, EndpointMetadata>,
     pub response_scroll: (u16, u16),
     pub is_stream: bool,
+    /// The seq of the last request sent on this connection.
+    pub seq: u32,
 }
 
 impl AppState {
@@ -64,29 +67,32 @@ impl AppState {
         endpoint_names: Vec<String>,
         endpoint_data: HashMap<String, EndpointMetadata>,
         param_defaults: HashMap<String, HashMap<String, String>>,
+        handle: Handle,
     ) -> Self {
         Self {
+            handle,
             client: None,
             current_block: AppBlock::Settings,
             focused_settings_field: Some(SettingsField::Url),
             focused_endpoint_field: Some(EndpointField::Param(0)),
             connected: false,
             endpoint_connected: false,
-            url: "ws://localhost:8443".to_string(),
+            url: "ws://127.0.0.1:8080/".to_string(),
             username: String::new(),
             password: String::new(),
             method_id: None,
             service_name: None,
             params: Vec::new(),
             param_values: Vec::new(),
-            param_defaults: param_defaults,
+            param_defaults,
             json_view_mode: JsonViewMode::Pretty,
             json_data: None,
             endpoints: endpoint_names,
             selected_endpoint: 0,
-            endpoint_data: endpoint_data,
+            endpoint_data,
             response_scroll: (0, 0),
             is_stream: false,
+            seq: 0,
         }
     }
 
@@ -108,10 +114,8 @@ impl AppState {
     }
 
     pub fn scroll_response_left(&mut self) {
-        if self.current_block == AppBlock::EndpointsRes {
-            if self.response_scroll.1 > 0 {
-                self.response_scroll.1 -= 1;
-            }
+        if self.current_block == AppBlock::EndpointsRes && self.response_scroll.1 > 0 {
+            self.response_scroll.1 -= 1;
         }
     }
 
@@ -134,10 +138,10 @@ impl AppState {
     }
 
     fn update_endpoint_input(&mut self, c: char) {
-        if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
-            if let Some(param) = self.param_values.get_mut(index) {
-                param.push(c);
-            }
+        if let Some(EndpointField::Param(index)) = self.focused_endpoint_field
+            && let Some(param) = self.param_values.get_mut(index)
+        {
+            param.push(c);
         }
     }
 
@@ -165,10 +169,10 @@ impl AppState {
     }
 
     fn delete_last_char_from_endpoint(&mut self) {
-        if let Some(EndpointField::Param(index)) = self.focused_endpoint_field {
-            if let Some(param) = self.param_values.get_mut(index) {
-                param.pop();
-            }
+        if let Some(EndpointField::Param(index)) = self.focused_endpoint_field
+            && let Some(param) = self.param_values.get_mut(index)
+        {
+            param.pop();
         }
     }
 
@@ -249,77 +253,71 @@ impl AppState {
 
     // Block switching
     pub fn switch_block(&mut self) {
-        if self.connected {
-            self.current_block = match self.current_block {
-                AppBlock::Settings => {
-                    self.update_selected_endpoint_data();
-                    AppBlock::EndpointList
-                }
-                AppBlock::EndpointList => {
-                    self.update_selected_endpoint_data();
-                    AppBlock::EndpointsReq
-                }
-                AppBlock::EndpointsReq => AppBlock::EndpointsRes,
-                AppBlock::EndpointsRes => AppBlock::Settings,
-            };
-        }
+        self.current_block = match self.current_block {
+            AppBlock::Settings => {
+                self.update_selected_endpoint_data();
+                AppBlock::EndpointList
+            }
+            AppBlock::EndpointList => {
+                self.update_selected_endpoint_data();
+                AppBlock::EndpointsReq
+            }
+            AppBlock::EndpointsReq => AppBlock::EndpointsRes,
+            AppBlock::EndpointsRes => AppBlock::Settings,
+        };
     }
 
     // Endpoint selection
     pub fn select_next_endpoint(&mut self) {
-        if self.connected {
-            if self.selected_endpoint < self.endpoints.len() - 1 {
-                self.selected_endpoint += 1;
-                self.update_selected_endpoint_data();
-            }
+        if self.selected_endpoint + 1 < self.endpoints.len() {
+            self.selected_endpoint += 1;
+            self.update_selected_endpoint_data();
         }
     }
 
     pub fn select_previous_endpoint(&mut self) {
-        if self.connected {
-            if self.selected_endpoint > 0 {
-                self.selected_endpoint -= 1;
-                self.update_selected_endpoint_data();
-            }
+        if self.selected_endpoint > 0 {
+            self.selected_endpoint -= 1;
+            self.update_selected_endpoint_data();
         }
     }
 
     fn update_selected_endpoint_data(&mut self) {
-        if let Some(endpoint) = self.endpoints.get(self.selected_endpoint) {
-            if let Some(metadata) = self.endpoint_data.get(endpoint) {
-                self.method_id = Some(metadata.method_id);
-                self.service_name = Some(metadata.service_name.clone());
+        if let Some(endpoint) = self.endpoints.get(self.selected_endpoint)
+            && let Some(metadata) = self.endpoint_data.get(endpoint)
+        {
+            self.method_id = Some(metadata.method_id);
+            self.service_name = Some(metadata.service_name.clone());
 
-                // Do not sort params by their names
-                self.params = metadata.params.clone();
+            // Do not sort params by their names
+            self.params = metadata.params.clone();
 
-                // Check if there are default values for this method_id
-                if let Some((_, defaults)) = self
-                    .param_defaults
+            // Check if there are default values for this method_id
+            if let Some((_, defaults)) = self
+                .param_defaults
+                .iter()
+                .find(|(id, _)| **id == metadata.method_id.to_string())
+            {
+                // Create a map of default values for easy lookup
+                let default_map: HashMap<_, _> = defaults.clone();
+
+                // Populate param_values with either the default value or an empty string
+                self.param_values = self
+                    .params
                     .iter()
-                    .find(|(id, _)| **id == metadata.method_id.to_string())
-                {
-                    // Create a map of default values for easy lookup
-                    let default_map: HashMap<_, _> = defaults.clone();
-
-                    // Populate param_values with either the default value or an empty string
-                    self.param_values = self
-                        .params
-                        .iter()
-                        .map(|param| {
-                            default_map
-                                .get(&param.name)
-                                .cloned()
-                                .unwrap_or_else(|| "".to_string())
-                        })
-                        .collect();
-                } else {
-                    // If no defaults are found, initialize with empty strings
-                    self.param_values = vec!["".to_string(); self.params.len()];
-                }
-
-                self.is_stream = metadata.is_stream;
+                    .map(|param| {
+                        default_map
+                            .get(&param.name)
+                            .cloned()
+                            .unwrap_or_else(|| "".to_string())
+                    })
+                    .collect();
+            } else {
+                // If no defaults are found, initialize with empty strings
+                self.param_values = vec!["".to_string(); self.params.len()];
             }
+
+            self.is_stream = metadata.is_stream;
         }
     }
 
@@ -387,12 +385,15 @@ impl AppState {
     }
 
     pub async fn handle_connect(&mut self) -> Result<()> {
-        let mut client = WsClient::new(&self.url, &format!("0loginstep1, 1{}", self.username))
-            .await
-            .context("Failed to connect to WebSocket")?;
+        let mut client = ws::connect(
+            &self.url,
+            &format!("0loginstep1, 1{}", self.username),
+            &self.handle,
+        )
+        .await
+        .context("Failed to connect to WebSocket")?;
 
-        let response = client
-            .recv_raw()
+        let response = ws::recv(&mut client)
             .await
             .context("Failed to receive response from WebSocket for step 1")?;
 
@@ -410,21 +411,22 @@ impl AppState {
         };
 
         let _ = client.close().await;
-        let mut client = WsClient::new(
+        let mut client = ws::connect(
             &self.url,
             &format!("0loginstep2, 1{token}, 2{}", self.password),
+            &self.handle,
         )
         .await
         .context("Failed to connect to WebSocket")?;
 
-        let response = client
-            .recv_raw()
+        let response = ws::recv(&mut client)
             .await
             .context("Failed to receive response from WebSocket for step 2")?;
         let response = self.format_json(&response)?;
 
         self.json_data = Some(format!("Connected to {}\n{}", self.url, response));
         self.client = Some(client);
+        self.seq = 0;
         self.connected = true;
 
         Ok(())
@@ -440,11 +442,31 @@ impl AppState {
         Ok(())
     }
 
+    /// Send the selected endpoint. With no connection open, it is the
+    /// handshake: its parameters go in `Sec-WebSocket-Protocol`, the way
+    /// endpoint-libs servers take a connect endpoint, and the connection stays
+    /// open for the calls after it.
     pub async fn handle_endpoint_connect(&mut self) -> Result<()> {
-        let client = self
-            .client
-            .as_mut()
-            .context("WebSocket client is not connected")?;
+        let method_id = self.method_id.context("Select an endpoint first")?;
+        let Some(client) = self.client.as_mut() else {
+            let name = &self.endpoints[self.selected_endpoint];
+            let values: Vec<Option<String>> = self
+                .param_values
+                .iter()
+                .map(|value| (!value.is_empty()).then(|| value.clone()))
+                .collect();
+            let mut client =
+                ws::connect(&self.url, &ws::protocol_header(name, &values), &self.handle).await?;
+            let frame = ws::recv(&mut client)
+                .await
+                .context("No answer to the handshake")?;
+            self.json_data = Some(self.format_json(&frame)?);
+            self.client = Some(client);
+            self.seq = 0;
+            self.connected = true;
+            self.endpoint_connected = true;
+            return Ok(());
+        };
 
         let mut converted_params = Vec::new();
         for (param, value) in self.params.iter().zip(self.param_values.iter()) {
@@ -456,18 +478,34 @@ impl AppState {
         }
 
         client
-            .send_req(self.method_id.unwrap(), converted_params)
+            .send_req(method_id, converted_params)
             .await
             .context("Failed to send request to WebSocket")?;
-        let raw_response = client
-            .recv_raw()
-            .await
-            .context("Failed to receive response from WebSocket")?;
+        self.seq += 1;
+        // Stream frames may arrive first; the answer is the frame with this seq.
+        let response = loop {
+            let frame = ws::recv(client)
+                .await
+                .context("Failed to receive response from WebSocket")?;
+            if frame.get("seq").and_then(serde_json::Value::as_u64) == Some(self.seq.into()) {
+                break frame;
+            }
+        };
 
-        let resp = self.format_json(&raw_response)?;
-
+        self.json_data = Some(self.format_json(&response)?);
         self.endpoint_connected = true;
-        self.json_data = Some(resp);
+        Ok(())
+    }
+
+    /// Show a frame the server pushed, such as a stream update, if one arrives
+    /// within `wait`.
+    pub async fn poll_frame(&mut self, wait: std::time::Duration) -> Result<()> {
+        let Some(client) = self.client.as_mut() else {
+            return Ok(());
+        };
+        if let Some(frame) = ws::recv_within(client, wait).await? {
+            self.json_data = Some(self.format_json(&frame)?);
+        }
         Ok(())
     }
 

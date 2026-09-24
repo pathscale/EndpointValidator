@@ -1,7 +1,7 @@
 use crate::parser::{
     EndpointData, EndpointMetadata, ParamValue, ParameterMetadata, Services, Type,
 };
-use anyhow::{Context, Result, anyhow, bail};
+use eyre::{Result, WrapErr, bail, eyre};
 use serde_json::{Number, Value};
 use std::collections::HashMap;
 
@@ -70,7 +70,7 @@ impl ConvertValue for Type {
             Type::Int64 | Type::TimeStampMs => Value::Number(Number::from(value.parse::<i64>()?)),
             Type::Float64 => Value::Number(
                 Number::from_f64(value.parse::<f64>()?)
-                    .ok_or_else(|| anyhow!("`{value}` is not a finite number"))?,
+                    .ok_or_else(|| eyre!("`{value}` is not a finite number"))?,
             ),
             Type::Boolean => Value::Bool(value.parse::<bool>()?),
             Type::Unit => Value::Null,
@@ -113,15 +113,17 @@ impl ConvertValue for Type {
                 Value::Object(map)
             }
 
-            // Enums go over the wire as their integer value, not their name --
-            // see `enum_to_schema` upstream, which emits `type: integer` with a
-            // `const` per variant. Accept either spelling in config.
+            // Enums go over the wire as their variant name. endpoint-libs servers
+            // deserialize the generated enums with plain serde and refuse an
+            // integer with "unknown variant"; `enum_to_schema` upstream says
+            // integer, and is wrong about what the servers accept. Either
+            // spelling works in config, and both send the name.
             Type::Enum { name, variants } => {
                 if let Some(variant) = variants.iter().find(|v| v.name == value) {
-                    Value::Number(Number::from(variant.value))
+                    Value::String(variant.name.clone())
                 } else if let Ok(n) = value.parse::<i64>() {
-                    if variants.iter().any(|v| v.value == n) {
-                        Value::Number(Number::from(n))
+                    if let Some(variant) = variants.iter().find(|v| v.value == n) {
+                        Value::String(variant.name.clone())
                     } else {
                         bail!("enum `{name}`: no variant has value {n}");
                     }
@@ -137,10 +139,13 @@ impl ConvertValue for Type {
                 }
             }
 
-            // References cannot be resolved without the registry, so accept raw
-            // JSON and let the server validate. Better than the previous
-            // behaviour, which silently sent the string.
-            Type::StructRef(name) | Type::EnumRef { name, .. } => serde_json::from_str(value)
+            // References cannot be resolved without the registry. An enum
+            // reference is a bare variant name, as above, or JSON; a struct
+            // reference is raw JSON, and the server validates it.
+            Type::EnumRef { .. } => {
+                serde_json::from_str(value).unwrap_or_else(|_| Value::String(value.to_string()))
+            }
+            Type::StructRef(name) => serde_json::from_str(value)
                 .with_context(|| format!("`{value}` is not valid JSON for `{name}`"))?,
             Type::StructTable { struct_ref } => serde_json::from_str(value)
                 .with_context(|| format!("`{value}` is not valid JSON for table `{struct_ref}`"))?,
